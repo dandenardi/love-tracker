@@ -1,23 +1,7 @@
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from './schema';
-import type { EventTypeKey } from '@/constants/eventTypes';
-
-export interface LoveEvent {
-  id: string;
-  contact_id: string;
-  type: EventTypeKey;
-  title?: string;
-  note?: string;
-  intensity: number;
-  mood_tag?: string;
-  occurred_at: number; // unix ms
-  logged_at: number;
-  synced: number;
-  server_id?: string;
-  /** 1 = private (never synced to partner), 0 = shared */
-  is_private: number;
-}
+import { LoveEvent, EventTypeKey } from '@love/shared';
 
 // ── CREATE ─────────────────────────────────────────────────────────────────
 export function createEvent(
