@@ -1,0 +1,142 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "confirm": "Confirm",
+    "add": "Add",
+    "done": "Done",
+    "loading": "Loading...",
+    "noData": "Nothing here yet"
+  },
+  "tabs": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "timeline": "Timeline",
+    "stats": "Stats",
+    "settings": "Settings"
+  },
+  "events": {
+    "intimacy": "Intimacy",
+    "fight": "Fight",
+    "affection": "Affection",
+    "date": "Date Night",
+    "special": "Special",
+    "milestone": "Milestone",
+    "custom": "Custom",
+    "logNow": "Log Now",
+    "logEvent": "Log Event",
+    "editEvent": "Edit Event",
+    "deleteEvent": "Delete Event",
+    "deleteConfirm": "Are you sure you want to delete this event?",
+    "note": "Note (optional)",
+    "notePlaceholder": "What happened?",
+    "intensity": "Intensity",
+    "mood": "Mood",
+    "dateTime": "Date & Time",
+    "chooseType": "Choose event type",
+    "loggedAt": "Logged at",
+    "private": "Private Event",
+    "privateDesc": "Only visible to you · never shared with partner",
+    "privateBadge": "Private"
+  },
+  "moods": {
+    "inLove": "In Love",
+    "happy": "Happy",
+    "sad": "Sad",
+    "frustrated": "Frustrated",
+    "peaceful": "Peaceful",
+    "passionate": "Passionate",
+    "hurt": "Hurt",
+    "confident": "Confident"
+  },
+  "home": {
+    "title": "Love Tracker",
+    "quickLog": "Quick Log",
+    "recentEvents": "Recent Events",
+    "noRecentEvents": "No events yet. Tap a button to get started!",
+    "tapToLog": "Tap to log instantly · Hold for options"
+  },
+  "contacts": {
+    "title": "People",
+    "addContact": "Add Person",
+    "editContact": "Edit Person",
+    "deleteContact": "Remove Person",
+    "deleteConfirm": "Remove this person and all their events?",
+    "name": "Name",
+    "namePlaceholder": "E.g. Maria",
+    "nickname": "Nickname (optional)",
+    "avatar": "Avatar Emoji",
+    "color": "Color",
+    "noContacts": "No people added yet"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "noEvents": "No events on this day",
+    "eventsOnDay": "Events on {{date}}"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "noEvents": "No events yet",
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "stats": {
+    "title": "Statistics",
+    "totalEvents": "Total Events",
+    "byType": "By Type",
+    "daysSince": "Days Since Last",
+    "never": "Never",
+    "streak": "Best Streak",
+    "days": "days",
+    "thisMonth": "This Month",
+    "allTime": "All Time"
+  },
+  "settings": {
+    "title": "Settings",
+    "privacy": "Privacy",
+    "biometric": "Biometric Lock",
+    "biometricDesc": "Require fingerprint or face to open",
+    "pin": "PIN Lock",
+    "pinDesc": "Set a 4-digit PIN",
+    "lockTimeout": "Lock Timeout",
+    "timeoutOptions": {
+      "immediately": "Immediately",
+      "1min": "1 minute",
+      "5min": "5 minutes",
+      "15min": "15 minutes"
+    },
+    "theme": "Theme",
+    "themeDesc": "Choose your app appearance",
+    "language": "Language",
+    "languageDesc": "Choose app language",
+    "data": "Data",
+    "exportData": "Export Data",
+    "deleteAll": "Delete All Data",
+    "deleteAllConfirm": "This will permanently delete all events and contacts. Are you sure?",
+    "version": "Version",
+    "partner": "Partner Sync",
+    "partnerDesc": "Coming soon"
+  },
+  "privacy": {
+    "unlock": "Unlock Love Tracker",
+    "useBiometric": "Use Biometric",
+    "usePin": "Use PIN",
+    "enterPin": "Enter PIN",
+    "wrongPin": "Incorrect PIN",
+    "setPin": "Set PIN",
+    "confirmPin": "Confirm PIN",
+    "pinMismatch": "PINs don't match",
+    "locked": "App is locked"
+  },
+  "onboarding": {
+    "welcome": "Welcome to Love Tracker",
+    "subtitle": "Your personal relationship journal",
+    "chooseTheme": "Choose your style",
+    "addFirst": "Add your first person",
+    "getStarted": "Get Started"
+  }
+}

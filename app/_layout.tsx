@@ -1,59 +1,72 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import 'react-native-get-random-values';
+import '@/i18n';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { LockScreen } from '@/components/LockScreen';
+import { usePrivacyLock } from '@/hooks/usePrivacyLock';
+import { initDatabase } from '@/db/schema';
+import { useContactsStore } from '@/store/useContactsStore';
+import { View, ActivityIndicator } from 'react-native';
 
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+function AppContent() {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const {
+    isLocked,
+    isReady,
+    isBiometricEnabled,
+    unlockWithBiometric,
+    unlockWithPin,
+  } = usePrivacyLock();
+  const loadContacts = useContactsStore((s) => s.loadContacts);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    initDatabase().then(() => {
+      loadContacts();
+    });
+  }, []);
 
-  if (!loaded) {
-    return null;
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={c.primary} size="large" />
+      </View>
+    );
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  if (isLocked) {
+    return (
+      <LockScreen
+        hasBiometric={isBiometricEnabled()}
+        onUnlockWithBiometric={unlockWithBiometric}
+        onUnlockWithPin={unlockWithPin}
+      />
+    );
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    <>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="modal/log-event" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modal/event-detail" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="modal/add-contact" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="+not-found" />
       </Stack>
-    </ThemeProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

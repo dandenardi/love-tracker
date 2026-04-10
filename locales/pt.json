@@ -1,0 +1,142 @@
+{
+  "common": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "confirm": "Confirmar",
+    "add": "Adicionar",
+    "done": "Concluído",
+    "loading": "Carregando...",
+    "noData": "Nada aqui ainda"
+  },
+  "tabs": {
+    "home": "Início",
+    "calendar": "Calendário",
+    "timeline": "Linha do Tempo",
+    "stats": "Estatísticas",
+    "settings": "Ajustes"
+  },
+  "events": {
+    "intimacy": "Intimidade",
+    "fight": "Briga",
+    "affection": "Afeto",
+    "date": "Encontro",
+    "special": "Especial",
+    "milestone": "Marco",
+    "custom": "Personalizado",
+    "logNow": "Registrar Agora",
+    "logEvent": "Registrar Evento",
+    "editEvent": "Editar Evento",
+    "deleteEvent": "Excluir Evento",
+    "deleteConfirm": "Tem certeza que deseja excluir este evento?",
+    "note": "Nota (opcional)",
+    "notePlaceholder": "O que aconteceu?",
+    "intensity": "Intensidade",
+    "mood": "Humor",
+    "dateTime": "Data e Hora",
+    "chooseType": "Escolha o tipo de evento",
+    "loggedAt": "Registrado em",
+    "private": "Evento Privado",
+    "privateDesc": "Visível apenas para você · nunca compartilhado com o parceiro",
+    "privateBadge": "Privado"
+  },
+  "moods": {
+    "inLove": "Apaixonado",
+    "happy": "Feliz",
+    "sad": "Triste",
+    "frustrated": "Frustrado",
+    "peaceful": "Em paz",
+    "passionate": "Apaixonado",
+    "hurt": "Magoado",
+    "confident": "Confiante"
+  },
+  "home": {
+    "title": "Love Tracker",
+    "quickLog": "Registrar Rápido",
+    "recentEvents": "Eventos Recentes",
+    "noRecentEvents": "Nenhum evento ainda. Toque em um botão para começar!",
+    "tapToLog": "Toque para registrar · Segure para opções"
+  },
+  "contacts": {
+    "title": "Pessoas",
+    "addContact": "Adicionar Pessoa",
+    "editContact": "Editar Pessoa",
+    "deleteContact": "Remover Pessoa",
+    "deleteConfirm": "Remover esta pessoa e todos os seus eventos?",
+    "name": "Nome",
+    "namePlaceholder": "Ex: Maria",
+    "nickname": "Apelido (opcional)",
+    "avatar": "Emoji de Avatar",
+    "color": "Cor",
+    "noContacts": "Nenhuma pessoa adicionada ainda"
+  },
+  "calendar": {
+    "title": "Calendário",
+    "noEvents": "Nenhum evento neste dia",
+    "eventsOnDay": "Eventos em {{date}}"
+  },
+  "timeline": {
+    "title": "Linha do Tempo",
+    "noEvents": "Nenhum evento ainda",
+    "today": "Hoje",
+    "yesterday": "Ontem"
+  },
+  "stats": {
+    "title": "Estatísticas",
+    "totalEvents": "Total de Eventos",
+    "byType": "Por Tipo",
+    "daysSince": "Dias desde o Último",
+    "never": "Nunca",
+    "streak": "Melhor Sequência",
+    "days": "dias",
+    "thisMonth": "Este Mês",
+    "allTime": "Desde Sempre"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "privacy": "Privacidade",
+    "biometric": "Bloqueio Biométrico",
+    "biometricDesc": "Exigir digital ou rosto para abrir",
+    "pin": "Bloqueio por PIN",
+    "pinDesc": "Definir um PIN de 4 dígitos",
+    "lockTimeout": "Tempo de Bloqueio",
+    "timeoutOptions": {
+      "immediately": "Imediatamente",
+      "1min": "1 minuto",
+      "5min": "5 minutos",
+      "15min": "15 minutos"
+    },
+    "theme": "Tema",
+    "themeDesc": "Escolha a aparência do app",
+    "language": "Idioma",
+    "languageDesc": "Escolha o idioma do app",
+    "data": "Dados",
+    "exportData": "Exportar Dados",
+    "deleteAll": "Excluir Todos os Dados",
+    "deleteAllConfirm": "Isso excluirá permanentemente todos os eventos e contatos. Tem certeza?",
+    "version": "Versão",
+    "partner": "Sincronização com Parceiro",
+    "partnerDesc": "Em breve"
+  },
+  "privacy": {
+    "unlock": "Desbloquear Love Tracker",
+    "useBiometric": "Usar Biometria",
+    "usePin": "Usar PIN",
+    "enterPin": "Digite o PIN",
+    "wrongPin": "PIN incorreto",
+    "setPin": "Definir PIN",
+    "confirmPin": "Confirmar PIN",
+    "pinMismatch": "Os PINs não coincidem",
+    "locked": "App bloqueado"
+  },
+  "onboarding": {
+    "welcome": "Bem-vindo ao Love Tracker",
+    "subtitle": "Seu diário de relacionamentos pessoal",
+    "chooseTheme": "Escolha seu estilo",
+    "addFirst": "Adicione sua primeira pessoa",
+    "getStarted": "Começar"
+  }
+}
