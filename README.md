@@ -3,13 +3,7 @@
 > A privacy-first, offline-first relationship journal built with React Native + Expo.
 > Log your moments. Keep what's yours private. Share what matters with your partner.
 
----
 
-> **For AI assistants:** Always read this file before proposing any change to the codebase.
-> It documents the current architecture, data models, and implementation status so that
-> suggestions are consistent with existing patterns and don't duplicate in-progress work.
-
----
 
 ## Project Overview
 
