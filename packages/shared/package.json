@@ -2,7 +2,8 @@
   "name": "@love/shared",
   "version": "1.0.0",
   "private": true,
-  "main": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "dependencies": {
     "typescript": "^5.0.0"
   }

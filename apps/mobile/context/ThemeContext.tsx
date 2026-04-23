@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 import { DEFAULT_THEME, THEMES, type Theme, type ThemeKey } from '@/constants/themes';
 
-const storage = new MMKV({ id: 'love-tracker-prefs' });
+const storage = createMMKV({ id: 'love-tracker-prefs' });
 const THEME_KEY = 'selectedTheme';
 
 interface ThemeContextValue {

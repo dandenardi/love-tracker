@@ -12,9 +12,16 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "mobile": "npm run start --workspace=apps/mobile",
-    "server": "npm run start --workspace=apps/server"
+    "server": "npm run start --workspace=apps/server",
+    "android": "npm run android --workspace=apps/mobile",
+    "ios": "npm run ios --workspace=apps/mobile"
   },
   "devDependencies": {
     "turbo": "^2.1.0"
+  },
+  "dependencies": {
+    "expo": "~54.0.33",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }

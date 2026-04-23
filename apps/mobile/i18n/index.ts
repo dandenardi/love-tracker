@@ -1,12 +1,12 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
 import en from '@/locales/en.json';
 import pt from '@/locales/pt.json';
 
-const storage = new MMKV({ id: 'love-tracker-prefs' });
+const storage = createMMKV({ id: 'love-tracker-prefs' });
 const LANG_KEY = 'language';
 
 const deviceLocale = Localization.getLocales()[0]?.languageCode ?? 'en';

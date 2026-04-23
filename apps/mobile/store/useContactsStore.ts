@@ -6,9 +6,9 @@ import {
   deleteContact,
   type Contact,
 } from '@/db/contacts';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
-const storage = new MMKV({ id: 'love-tracker-prefs' });
+const storage = createMMKV({ id: 'love-tracker-prefs' });
 const ACTIVE_CONTACT_KEY = 'activeContactId';
 
 interface ContactsState {

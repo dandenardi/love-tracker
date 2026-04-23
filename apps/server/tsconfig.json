@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "module": "CommonJS",
+    "target": "ES6",
+    "lib": ["ESNext"],
+    "types": ["node", "express"]
+  },
+  "include": ["**/*.ts"],
+  "references": [
+    { "path": "../../packages/shared" }
+  ]
+}
+

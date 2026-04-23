@@ -22,7 +22,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.dandenardi.lovetracker",
+      "minSdkVersion": 24
     },
     "web": {
       "bundler": "metro",

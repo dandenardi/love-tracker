@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV } from 'react-native-mmkv';
 
-const storage = new MMKV({ id: 'love-tracker-prefs' });
+const storage = createMMKV({ id: 'love-tracker-prefs' });
 const PIN_KEY = 'appPin';
 const BIOMETRIC_KEY = 'biometricEnabled';
 const TIMEOUT_KEY = 'lockTimeout'; // in minutes; 0 = immediate
