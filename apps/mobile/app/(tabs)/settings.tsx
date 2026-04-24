@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { THEMES, type ThemeKey } from '@/constants/themes';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
+import { useSyncStore } from '@/store/useSyncStore';
 import { setLanguage } from '@/i18n';
 
 function SectionHeader({ label }: { label: string }) {
@@ -28,7 +29,167 @@ function SettingRow({ label, desc, children, last }: { label: string; desc?: str
   );
 }
 
-export default function SettingsScreen() {
+function PartnerSyncSection() {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const { t } = useTranslation();
+  const sync = useSyncStore();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [alias, setAlias] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [pairCode, setPairCode] = useState('');
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  const handleAuth = async () => {
+    try {
+      if (isRegistering) {
+        await sync.register(email, password, alias);
+      } else {
+        await sync.login(email, password);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const handlePair = async () => {
+    try {
+      await sync.pairWithCode(pairCode);
+      setPairCode('');
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const handleGenerateInvite = async () => {
+    try {
+      const code = await sync.generateInvite();
+      setInviteCode(code);
+    } catch (err: any) {
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  if (!sync.userId) {
+    return (
+      <>
+        <SectionHeader label={t('settings.partner')} />
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border, padding: 16 }]}>
+          <Text style={[styles.rowLabel, { color: c.text, marginBottom: 12 }]}>
+            {isRegistering ? t('auth.createAccount') : t('auth.login')}
+          </Text>
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor={c.textMuted}
+            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+          />
+          {isRegistering && (
+            <TextInput
+              placeholder="Alias (Display Name)"
+              placeholderTextColor={c.textMuted}
+              style={[styles.input, { borderColor: c.border, color: c.text }]}
+              value={alias}
+              onChangeText={setAlias}
+            />
+          )}
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor={c.textMuted}
+            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          <TouchableOpacity
+            onPress={handleAuth}
+            disabled={sync.isSyncing}
+            style={[styles.primaryBtn, { backgroundColor: c.primary }]}
+          >
+            {sync.isSyncing ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>{isRegistering ? 'Register' : 'Login'}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setIsRegistering(!isRegistering)} style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text style={{ color: c.primary, fontSize: 13 }}>
+              {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SectionHeader label={t('settings.partner')} />
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <SettingRow label={`Hi, ${sync.alias}`} desc={sync.partnerId ? `Paired with ${sync.partnerAlias}` : 'Not paired yet'}>
+          <TouchableOpacity onPress={sync.logout}>
+            <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Logout</Text>
+          </TouchableOpacity>
+        </SettingRow>
+
+        {!sync.partnerId && (
+          <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+            {inviteCode ? (
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 4 }}>Your Pair Code:</Text>
+                <Text style={{ color: c.primary, fontSize: 24, fontWeight: '800', letterSpacing: 2 }}>{inviteCode}</Text>
+                <Text style={{ color: c.textMuted, fontSize: 10, marginTop: 4 }}>Expires in 30 minutes</Text>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={handleGenerateInvite} style={[styles.secondaryBtn, { borderColor: c.primary }]}>
+                <Text style={{ color: c.primary, fontWeight: '700' }}>Generate Invite Code</Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={{ height: 1, backgroundColor: c.border, marginVertical: 16 }} />
+
+            <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 8 }}>Or enter partner's code:</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                placeholder="ABC-123"
+                placeholderTextColor={c.textMuted}
+                style={[styles.input, { flex: 1, marginBottom: 0, borderColor: c.border, color: c.text }]}
+                value={pairCode}
+                onChangeText={setPairCode}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity onPress={handlePair} style={[styles.primaryBtn, { backgroundColor: c.primary, paddingHorizontal: 20 }]}>
+                <Text style={styles.btnText}>Pair</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {sync.partnerId && (
+          <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+            <TouchableOpacity
+              onPress={() => sync.sync()}
+              disabled={sync.isSyncing}
+              style={[styles.primaryBtn, { backgroundColor: c.primary, flexDirection: 'row', gap: 8 }]}
+            >
+              {sync.isSyncing ? <ActivityIndicator color="#FFF" /> : (
+                <>
+                  <Text style={{ fontSize: 16 }}>🔄</Text>
+                  <Text style={styles.btnText}>Sync Now</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <Text style={{ color: c.textMuted, fontSize: 10, textAlign: 'center', marginTop: 8 }}>
+              Last synced: {sync.lastSyncedAt > 0 ? new Date(sync.lastSyncedAt).toLocaleString() : 'Never'}
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
+
+function SettingsScreen() {
   const { theme, themeKey, setTheme } = useTheme();
   const c = theme.colors;
   const { t, i18n } = useTranslation();
@@ -127,13 +288,8 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        {/* ── Partner Sync (Coming Soon) ── */}
-        <SectionHeader label={t('settings.partner')} />
-        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-          <SettingRow label={t('settings.partner')} desc={t('settings.partnerDesc')} last>
-            <Text style={{ fontSize: 20 }}>🔒</Text>
-          </SettingRow>
-        </View>
+        {/* ── Partner Sync ── */}
+        <PartnerSyncSection />
 
         <Text style={[styles.version, { color: c.textMuted }]}>Love Tracker v1.0.0</Text>
       </ScrollView>
@@ -171,4 +327,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   version: { textAlign: 'center', fontSize: 12, marginTop: 32 },
+  input: {
+    borderWidth: 1, borderRadius: 12, padding: 12,
+    fontSize: 14, marginBottom: 12,
+  },
+  primaryBtn: {
+    padding: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+  },
+  secondaryBtn: {
+    padding: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  btnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
 });
+
+export default SettingsScreen;

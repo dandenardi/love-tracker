@@ -24,9 +24,13 @@ function AppContent() {
   const loadContacts = useContactsStore((s) => s.loadContacts);
 
   useEffect(() => {
-    initDatabase().then(() => {
-      loadContacts();
-    });
+    initDatabase()
+      .then(() => {
+        loadContacts();
+      })
+      .catch((err) => {
+        console.error('DATABASE INIT ERROR:', err);
+      });
   }, []);
 
   if (!isReady) {

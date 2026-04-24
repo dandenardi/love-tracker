@@ -64,6 +64,14 @@ export async function initDatabase(): Promise<void> {
       `ALTER TABLE events ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;`
     );
   } catch {
-    // Column already exists — nothing to do.
+    // Column already exists
+  }
+
+  try {
+    await db.execAsync(
+      `ALTER TABLE contacts ADD COLUMN last_pulled_at INTEGER DEFAULT 0;`
+    );
+  } catch {
+    // Column already exists
   }
 }
