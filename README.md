@@ -306,14 +306,24 @@ Override is persisted in MMKV.
 
 ---
 
-## Server (Stub — Work in Progress)
+## Server (Real Sync Relay)
 
-`apps/server/index.ts` currently exposes:
-- `GET /health` → `{ status: 'ok', service: 'Love Tracker API' }`
-- `GET /events` → `[]` (hardcoded, no DB)
+`apps/server` is a Node.js/Express application that acts as a sync relay between partners.
 
-No real persistence, no authentication. This is a placeholder for the future partner-sync
-backend.
+### Architecture
+- **Framework**: Express with TypeScript
+- **Database**: PostgreSQL (hosted on Supabase)
+- **Auth**: JWT-based (Access token in memory, Refresh token in DB)
+- **Security**: Password hashing with `bcryptjs`, protected routes via `auth` middleware
+- **Sync**: Push/Pull architecture using `client_id` and `deleted_at` (soft-delete)
+
+### Endpoints
+- `POST /auth/register` — Create account
+- `POST /auth/login` — Get JWT tokens
+- `POST /auth/invite` — Generate 8-char pairing code
+- `POST /auth/pair` — Pair with a partner using a code
+- `POST /sync/push` — Upload local changes
+- `GET /sync/pull?lastPulledAt=...` — Download partner changes
 
 ---
 
@@ -333,20 +343,17 @@ backend.
 - Stats: count by type, days since last event
 - MMKV persistence for preferences and active contact
 - Monorepo setup with Turborepo
+- Express backend with PostgreSQL, JWT Auth, and Partner Sync API
+- Partner pairing via invite codes
+- Real-time / periodic sync between devices
 
 ### In Progress / Partial
-- Partner sync: schema columns exist (`partner_user_id`, `synced`, `server_id`) but no logic
-- `pitches` table: schema defined, not wired to any UI
-- Server backend: stub only
+- photo attachments on events
+- push notifications (package installed, not configured)
 
 ### Not Yet Started
-- Server database connection & real API
-- Partner authentication & account creation
-- Real-time / periodic sync between devices
 - Export / import data
-- Photo attachments on events
 - Streak calculation (UI has "Best Streak" placeholder)
-- Push notifications (package installed, not configured)
 
 ---
 

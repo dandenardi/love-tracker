@@ -1,20 +1,23 @@
 import express from 'express';
-import { LoveEvent } from '@love/shared';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import authRoutes from './routes/auth';
+import syncRoutes from './routes/sync';
+
+dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 
+app.use(cors());
 app.use(express.json());
 
-// Dummy database for the visibility the user wanted
-const events: LoveEvent[] = [];
+// Routes
+app.use('/auth', authRoutes);
+app.use('/sync', syncRoutes);
 
 app.get('/health', (req, res) => {
-  res.send({ status: 'ok', service: 'Love Tracker API' });
-});
-
-app.get('/events', (req, res) => {
-  res.json(events);
+  res.send({ status: 'ok', service: 'Love Tracker API', timestamp: Date.now() });
 });
 
 app.listen(port, () => {
