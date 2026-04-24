@@ -35,6 +35,37 @@ export function createEvent(
   return event;
 }
 
+// ── UPSERT (for sync) ───────────────────────────────────────────────────────
+export function upsertEvent(event: LoveEvent): void {
+  const db = getDb();
+  db.runSync(
+    `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       type = EXCLUDED.type,
+       title = EXCLUDED.title,
+       note = EXCLUDED.note,
+       intensity = EXCLUDED.intensity,
+       mood_tag = EXCLUDED.mood_tag,
+       occurred_at = EXCLUDED.occurred_at,
+       logged_at = EXCLUDED.logged_at,
+       synced = EXCLUDED.synced`,
+    [
+      event.id,
+      event.contact_id,
+      event.type,
+      event.title ?? null,
+      event.note ?? null,
+      event.intensity,
+      event.mood_tag ?? null,
+      event.occurred_at,
+      event.logged_at,
+      event.synced,
+      event.is_private,
+    ]
+  );
+}
+
 // ── READ ────────────────────────────────────────────────────────────────────
 export function getEventsByContact(contactId: string): LoveEvent[] {
   const db = getDb();

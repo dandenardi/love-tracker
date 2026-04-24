@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   createEvent,
+  upsertEvent,
   updateEvent,
   deleteEvent,
   getAllEvents,
@@ -21,6 +22,7 @@ interface EventsState {
   // Selectors (call these with a contactId to get filtered lists)
   getMonthEvents: (contactId: string, year: number, month: number) => LoveEvent[];
   getDayEvents: (contactId: string, dateMs: number) => LoveEvent[];
+  syncEvent: (event: LoveEvent) => void;
 }
 
 export const useEventsStore = create<EventsState>((set, get) => ({
@@ -65,5 +67,20 @@ export const useEventsStore = create<EventsState>((set, get) => ({
 
   getDayEvents: (contactId, dateMs) => {
     return getEventsByDate(contactId, dateMs);
+  },
+
+  syncEvent: (event) => {
+    upsertEvent(event);
+    set((s) => {
+      const exists = s.events.some((e) => e.id === event.id);
+      if (exists) {
+        return {
+          events: s.events.map((e) => (e.id === event.id ? event : e)),
+        };
+      }
+      return {
+        events: [event, ...s.events].sort((a, b) => b.occurred_at - a.occurred_at),
+      };
+    });
   },
 }));
