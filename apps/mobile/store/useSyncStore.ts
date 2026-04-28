@@ -1,24 +1,26 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV, type MMKV } from 'react-native-mmkv';
 import { authApi, syncApi, setAccessToken } from '@/services/syncApi';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
 import { LoveEvent } from '@love/shared';
 
-let storage: MMKV;
-try {
-  storage = new MMKV({ id: 'sync-storage' });
-} catch (e) {
-  console.error('MMKV init failed in useSyncStore, falling back to mock');
-  storage = { 
-    set: () => {}, 
-    getString: () => null, 
-    getNumber: () => 0, 
-    delete: () => {},
-    clearAll: () => {} 
-  } as any;
-}
+const storage: MMKV = (() => {
+  try {
+    return createMMKV({ id: 'sync-storage' });
+  } catch (e) {
+    console.error('MMKV init failed in useSyncStore, falling back to mock');
+    return { 
+      set: () => {}, 
+      getString: () => null, 
+      getNumber: () => 0, 
+      getBoolean: () => false,
+      delete: () => {},
+      clearAll: () => {} 
+    } as any;
+  }
+})();
 
 interface SyncState {
   userId: string | null;
