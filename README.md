@@ -103,8 +103,9 @@ love-tracker/
 │   │   │   ├── en.json                # English strings
 │   │   │   └── pt.json                # Portuguese (BR) strings
 │   │   ├── assets/                    # Images, fonts, icons
-│   │   └── android/                   # Native Android project
-│   │
+│   │   ├── android/                   # Native Android project
+│   │   ├── eas.json                   # EAS Build configuration
+│   │   └── package.json
 │   └── server/
 │       ├── index.ts                   # Stub Express server (see status below)
 │       ├── tsconfig.json              # TS config with project reference → shared
@@ -118,9 +119,10 @@ love-tracker/
 │       └── package.json
 │
 ├── turbo.json
+├── render.yaml                        # Render Blueprint for backend deployment
 ├── tsconfig.json                      # Root TS config: paths alias @love/shared
 ├── package.json                       # Workspaces: apps/*, packages/*
-└── CLAUDE.md                          # ← this file / project README
+└── README.md                          # Project README
 ```
 
 
@@ -372,6 +374,27 @@ npm run lint      # Lint all packages
 # Shared package (TypeScript project reference — run after changing packages/shared)
 cd packages/shared && npx tsc --build
 ```
+
+---
+
+## Deployment
+
+### Backend (Render + Supabase)
+
+1.  **Database**: Ensure your Supabase tables are created using `apps/server/db/schema.sql`.
+2.  **Render**: 
+    - Create a new **Blueprint** on Render pointing to this repository.
+    - It will detect `render.yaml` and create the `love-tracker-server` service.
+    - Set the `DATABASE_URL` environment variable in the Render dashboard (using your Supabase URI).
+    - The `JWT_SECRET` will be generated automatically, but you can override it.
+
+### Mobile (Google Play Store)
+
+1.  **Update URL**: Set your production backend URL in `apps/mobile/app.json` (`extra.apiUrl`).
+2.  **EAS Build**:
+    - Log in: `npx eas login`
+    - Build APK for testers: `npm run build:preview --workspace=apps/mobile`
+    - Build AAB for Play Store: `npm run build:production --workspace=apps/mobile`
 
 ---
 

@@ -1,6 +1,7 @@
 {
   "name": "love-tracker-monorepo",
   "version": "1.0.0",
+  "packageManager": "npm@7.20.0",
   "private": true,
   "description": "Love Tracker Monorepo — Relationship journal and sharing app",
   "workspaces": [

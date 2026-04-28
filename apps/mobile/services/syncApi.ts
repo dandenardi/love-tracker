@@ -11,9 +11,10 @@ import {
   SyncPullResponse 
 } from '@love/shared';
 
-// This should be configurable via env or constant
-// Use 10.0.2.2 for Android emulator to access localhost on the host machine
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001'; 
+import Constants from 'expo-constants';
+
+// Use apiUrl from app.json/app.config.js extra field
+const BASE_URL = Constants.expoConfig?.extra?.apiUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001'); 
 
 let accessToken: string | null = null;
 
