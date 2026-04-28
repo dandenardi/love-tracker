@@ -40,6 +40,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "https://love-tracker-server.onrender.com",
+      "eas": {
+        "projectId": "PLACEHOLDER_IF_NEEDED"
+      }
     }
   }
 }

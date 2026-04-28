@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: love-tracker-server
+    runtime: node
+    plan: free
+    region: ohio
+    # In a monorepo, the root is the repo root
+    # We use turbo to build only the server and its dependencies (shared)
+    buildCommand: npm install && npx turbo build --filter=@love/server...
+    # The start command uses the script we just added to the server package
+    startCommand: npm run start --workspace=apps/server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false # User must set this manually in Render
+      - key: JWT_SECRET
+        generateValue: true # Render will generate a random secret if not provided
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true

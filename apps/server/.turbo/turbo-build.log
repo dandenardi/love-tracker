@@ -1,0 +1,4 @@
+
+> @love/server@1.0.0 build
+> tsc --build
+
