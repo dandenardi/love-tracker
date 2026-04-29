@@ -9,46 +9,49 @@
 
 **Love Tracker** is an offline-first React Native relationship journal. It lets users log
 and track relevant checkpoints of their relationship (intimate moments, conflicts, dates,
-milestones, etc.) with privacy controls and groundwork for a future partner-sync feature.
+milestones, etc.) with privacy controls and a partner-sync feature.
 
-**Monorepo managed with Turborepo + npm workspaces.**
+**Structure: flat repo (no workspaces / no Turborepo).** Each app (`mobile/`, `server/`) is fully
+independent. The root `package.json` provides convenience scripts only.
 
 ---
 
 ## Tech Stack
 
-### Mobile (`apps/mobile`)
+### Mobile (`mobile/`)
 | Concern | Library | Version |
 |---|---|---|
-| Framework | React Native + Expo | RN 0.81.5 / Expo ~54 |
+| Framework | React Native + Expo | RN 0.83.6 / Expo ~55 |
 | Language | TypeScript | ~5.9.2 |
-| Routing | Expo Router (file-based) | ~6.0.23 |
+| Routing | Expo Router (file-based) | ~55.0.13 |
 | State | Zustand | 5.0.12 |
-| Local DB | Expo SQLite | 16.0.10 |
+| Local DB | Expo SQLite | ~55.0.0 |
 | Persistent KV | MMKV | 4.3.1 |
-| Secure storage | Expo Secure Store | 15.0.8 |
-| Biometrics | Expo Local Authentication | 17.0.8 |
+| Secure storage | Expo Secure Store | ~55.0.0 |
+| Biometrics | Expo Local Authentication | ~55.0.0 |
 | i18n | i18next + react-i18next | 26.0.4 / 17.0.2 |
 | Date utils | date-fns | 4.1.0 |
 | ID generation | uuid | 13.0.0 |
 | Charts | Victory Native | 36.9.2 |
 | Calendar | react-native-calendars | 1.1314.0 |
-| Animations | React Native Reanimated | 4.1.1 |
-| Haptics | Expo Haptics | 15.0.8 |
+| Animations | React Native Reanimated | 4.2.1 |
+| Haptics | Expo Haptics | ~55.0.0 |
 | Typography | @expo-google-fonts/inter | 0.4.2 |
-| Navigation | @react-navigation/native | 7.1.8 |
-| Push notifications | expo-notifications | 0.32.16 *(installed, not yet configured)* |
+| Navigation | @react-navigation/native | 7.1.33 |
+| Push notifications | expo-notifications | ~55.0.0 *(installed, not yet configured)* |
 | Async storage | @react-native-async-storage/async-storage | 2.2.0 |
 
-### Server (`apps/server`)
+### Server (`server/`)
 | Concern | Library | Version |
 |---|---|---|
 | Framework | Express | 4.18.2 |
 | Language | TypeScript | 5.0.0 |
 | Dev runner | ts-node-dev | 2.0.0 |
 
-### Shared (`packages/shared`)
-TypeScript-only types consumed by both mobile and server. No runtime dependencies.
+### Shared Types
+- **Mobile**: `mobile/src/types/shared.ts` — local copy of domain + API contract types
+- **Server**: `server/shared.ts` — local copy of domain + API contract types
+- Both files are kept in sync manually (they are identical in content).
 
 ---
 
@@ -56,8 +59,8 @@ TypeScript-only types consumed by both mobile and server. No runtime dependencie
 
 ```
 love-tracker/
-├── apps/
-│   ├── mobile/
+├── mobile/                            # React Native / Expo app
+│   ├── src/
 │   │   ├── app/                       # Expo Router screens
 │   │   │   ├── (tabs)/
 │   │   │   │   ├── index.tsx          # Home: quick-log grid + recent events
@@ -65,32 +68,24 @@ love-tracker/
 │   │   │   │   ├── timeline.tsx       # Chronological event list
 │   │   │   │   ├── stats.tsx          # Analytics dashboard
 │   │   │   │   ├── settings.tsx       # Theme, privacy, language, partner sync
-│   │   │   │   ├── two.tsx            # Placeholder tab (unused)
 │   │   │   │   └── _layout.tsx        # Tab bar setup
 │   │   │   ├── modal/
 │   │   │   │   ├── log-event.tsx      # Create event (full form)
 │   │   │   │   ├── event-detail.tsx   # View / edit / delete event
 │   │   │   │   └── add-contact.tsx    # Create contact
 │   │   │   ├── _layout.tsx            # Root layout: init, lock screen, theme
-│   │   │   ├── modal.tsx              # Generic modal shell (Expo Router)
 │   │   │   ├── +html.tsx              # HTML shell for web target
 │   │   │   └── +not-found.tsx
 │   │   ├── components/
-│   │   │   ├── LockScreen.tsx         # 4-digit PIN keypad
-│   │   │   ├── Themed.tsx             # Theme-aware View/Text wrappers
-│   │   │   ├── StyledText.tsx         # Typed text components
-│   │   │   ├── EditScreenInfo.tsx     # Expo default (unused)
-│   │   │   ├── ExternalLink.tsx       # Expo default (unused)
-│   │   │   ├── useClientOnlyValue.ts  # SSR helper
-│   │   │   ├── useColorScheme.ts      # Dark/light mode helper
-│   │   │   └── __tests__/             # Component tests
+│   │   │   └── LockScreen.tsx         # 4-digit PIN keypad
 │   │   ├── db/
 │   │   │   ├── schema.ts              # DB init, table creation, migrations
 │   │   │   ├── events.ts              # Event CRUD helpers
 │   │   │   └── contacts.ts            # Contact CRUD helpers
 │   │   ├── store/
 │   │   │   ├── useEventsStore.ts      # Zustand: events state + actions
-│   │   │   └── useContactsStore.ts    # Zustand: contacts state + actions
+│   │   │   ├── useContactsStore.ts    # Zustand: contacts state + actions
+│   │   │   └── useSyncStore.ts        # Zustand: auth + partner sync state
 │   │   ├── hooks/
 │   │   │   └── usePrivacyLock.ts      # Biometric + PIN lock logic
 │   │   ├── context/
@@ -98,31 +93,36 @@ love-tracker/
 │   │   ├── constants/
 │   │   │   ├── eventTypes.ts          # 7 event types, 8 mood tags, colors
 │   │   │   └── themes.ts              # Full color palettes for 6 themes
+│   │   ├── services/
+│   │   │   └── syncApi.ts             # REST API client (auth + sync)
+│   │   ├── types/
+│   │   │   └── shared.ts              # Local copy of domain + API types
 │   │   ├── i18n/index.ts              # i18next configuration
-│   │   ├── locales/
-│   │   │   ├── en.json                # English strings
-│   │   │   └── pt.json                # Portuguese (BR) strings
-│   │   ├── assets/                    # Images, fonts, icons
-│   │   ├── android/                   # Native Android project
-│   │   ├── eas.json                   # EAS Build configuration
-│   │   └── package.json
-│   └── server/
-│       ├── index.ts                   # Stub Express server (see status below)
-│       ├── tsconfig.json              # TS config with project reference → shared
-│       └── package.json
+│   │   └── locales/
+│   │       ├── en.json                # English strings
+│   │       └── pt.json                # Portuguese (BR) strings
+│   ├── assets/                        # Images, fonts, icons
+│   ├── android/                       # Native Android project
+│   ├── app.json                       # Expo config (plugins, scheme, icons)
+│   ├── eas.json                       # EAS Build configuration
+│   ├── tsconfig.json                  # TS config: @/* → ./src/*
+│   └── package.json
 │
-├── packages/
-│   └── shared/
-│       ├── index.ts                   # Shared TS types: LoveEvent, Contact, EventTypeKey
-│       ├── tsconfig.json              # Composite build config
-│       ├── dist/                      # Compiled output (generated, not committed)
-│       └── package.json
+├── server/                            # Express sync-relay backend
+│   ├── index.ts                       # Entry point
+│   ├── shared.ts                      # Inlined domain + API types
+│   ├── db/                            # DB pool + schema
+│   ├── middleware/                    # Auth middleware
+│   ├── routes/                        # Express route handlers
+│   ├── services/
+│   │   ├── authService.ts             # JWT auth, invite codes, pairing
+│   │   └── syncService.ts             # Push/pull event sync
+│   ├── tsconfig.json
+│   └── package.json
 │
-├── turbo.json
 ├── render.yaml                        # Render Blueprint for backend deployment
-├── tsconfig.json                      # Root TS config: paths alias @love/shared
-├── package.json                       # Workspaces: apps/*, packages/*
-└── README.md                          # Project README
+├── package.json                       # Root: convenience scripts only (no workspaces)
+└── README.md
 ```
 
 
@@ -130,7 +130,7 @@ love-tracker/
 
 ## Database Schema (local SQLite)
 
-File: `apps/mobile/db/schema.ts`
+File: `mobile/src/db/schema.ts`
 
 WAL mode and foreign keys are enabled on every open. The base tables are created with `CREATE TABLE IF NOT EXISTS`. New columns are added via safe migrations (ALTER TABLE wrapped in try/catch — idempotent).
 
@@ -185,7 +185,9 @@ ALTER TABLE events ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;
 
 ---
 
-## Shared Types (`packages/shared/index.ts`)
+## Shared Types
+
+Both `mobile/src/types/shared.ts` and `server/shared.ts` contain identical type definitions:
 
 ```typescript
 type EventTypeKey = 'INTIMACY' | 'FIGHT' | 'AFFECTION' | 'DATE' | 'SPECIAL' | 'MILESTONE' | 'CUSTOM'
@@ -215,18 +217,21 @@ interface Contact {
   partner_user_id?: string
   created_at: number
 }
+
+// + Auth, Pairing, Sync API contract types (see the files for full list)
 ```
 
 ---
 
 ## State Management
 
-Both stores live in `apps/mobile/store/`. They talk directly to the SQLite layer in `apps/mobile/db/`.
+Both stores live in `mobile/src/store/`. They talk directly to the SQLite layer in `mobile/src/db/`.
 
 | Store | State | Key actions |
 |---|---|---|
-| `useEventsStore` | `events: LoveEvent[]` | `loadEvents`, `logEvent`, `editEvent`, `removeEvent`, `togglePrivate` |
+| `useEventsStore` | `events: LoveEvent[]` | `loadEvents`, `logEvent`, `editEvent`, `removeEvent`, `togglePrivate`, `syncEvent` |
 | `useContactsStore` | `contacts: Contact[]`, `activeContactId` | `loadContacts`, `addContact`, `editContact`, `removeContact`, `setActiveContact` |
+| `useSyncStore` | `userId`, `partnerId`, `lastSyncedAt` | `init`, `register`, `login`, `logout`, `generateInvite`, `pairWithCode`, `sync` |
 
 `ThemeContext` provides the active theme and `setTheme()`. Theme key is persisted to MMKV.
 
@@ -236,16 +241,16 @@ Active contact ID is persisted to MMKV. Events are scoped to the active contact.
 
 ## Navigation & Screens
 
-### Tab routes (`app/(tabs)/`)
+### Tab routes (`src/app/(tabs)/`)
 | Route | Screen | Purpose |
 |---|---|---|
 | `/` | Home | Quick-log grid (tap = instant, long press = full form) + recent 5 events |
 | `/calendar` | Calendar | Monthly view with colored event dots; tap day → day modal |
 | `/timeline` | Timeline | All events chronologically; tap = edit, long press = delete |
 | `/stats` | Stats | Event counts by type, days-since-last per type |
-| `/settings` | Settings | Theme picker, privacy lock, language, partner sync (coming soon) |
+| `/settings` | Settings | Theme picker, privacy lock, language, partner sync |
 
-### Modal routes (`app/modal/`)
+### Modal routes (`src/app/modal/`)
 | Route | Purpose |
 |---|---|
 | `/modal/log-event?type=X&contactId=Y` | Full event creation form |
@@ -253,7 +258,7 @@ Active contact ID is persisted to MMKV. Events are scoped to the active contact.
 | `/modal/add-contact` | Create a new contact |
 
 ### Lock screen
-Rendered inside `app/_layout.tsx` as an overlay when the app returns from background
+Rendered inside `src/app/_layout.tsx` as an overlay when the app returns from background
 after the configured timeout (0 = immediate, 1/5/15 min). Shows 4-digit PIN keypad
 and optional biometric button.
 
@@ -298,7 +303,7 @@ Each theme exposes: `primary`, `primaryLight`, `primaryDark`, `accent`, `backgro
 
 ## i18n
 
-Config: `i18n/index.ts` · Namespaces: `en.json` / `pt.json`
+Config: `src/i18n/index.ts` · Namespaces: `en.json` / `pt.json`
 
 Key namespaces: `common`, `tabs`, `events`, `moods`, `home`, `contacts`, `calendar`,
 `timeline`, `stats`, `settings`, `privacy`, `onboarding`.
@@ -310,7 +315,7 @@ Override is persisted in MMKV.
 
 ## Server (Real Sync Relay)
 
-`apps/server` is a Node.js/Express application that acts as a sync relay between partners.
+`server/` is a Node.js/Express application that acts as a sync relay between partners.
 
 ### Architecture
 - **Framework**: Express with TypeScript
@@ -344,10 +349,11 @@ Override is persisted in MMKV.
 - Calendar view with multi-type dot markers
 - Stats: count by type, days since last event
 - MMKV persistence for preferences and active contact
-- Monorepo setup with Turborepo
 - Express backend with PostgreSQL, JWT Auth, and Partner Sync API
 - Partner pairing via invite codes
 - Real-time / periodic sync between devices
+- **Monorepo abandoned** — flat structure (`mobile/`, `server/`), no Turborepo, no npm workspaces
+- Shared types inlined per-app (`mobile/src/types/shared.ts`, `server/shared.ts`)
 
 ### In Progress / Partial
 - photo attachments on events
@@ -362,17 +368,25 @@ Override is persisted in MMKV.
 ## Dev Commands
 
 ```bash
-# From repo root
-npm run dev       # Start Expo + server in parallel (Turborepo)
-npm run mobile    # Expo dev server only (expo start)
-npm run server    # Express server only
-npm run android   # Run on Android emulator/device
-npm run ios       # Run on iOS simulator/device
-npm run build     # Build all packages
-npm run lint      # Lint all packages
+# From repo root (convenience scripts)
+npm run mobile    # expo start (inside mobile/)
+npm run server    # npm run start (inside server/)
+npm run android   # expo run:android (inside mobile/)
+npm run ios       # expo run:ios (inside mobile/)
 
-# Shared package (TypeScript project reference — run after changing packages/shared)
-cd packages/shared && npx tsc --build
+# Inside mobile/
+cd mobile
+npm run start           # Expo dev server
+npm run android         # Run on Android emulator/device
+npm run ios             # Run on iOS simulator/device
+npm run build:preview   # EAS build (Android APK for testers)
+npm run build:production # EAS build (Android AAB for Play Store)
+
+# Inside server/
+cd server
+npm run dev    # ts-node-dev (hot reload)
+npm run start  # Compiled JS
+npm run build  # tsc compile
 ```
 
 ---
@@ -381,7 +395,7 @@ cd packages/shared && npx tsc --build
 
 ### Backend (Render + Supabase)
 
-1.  **Database**: Ensure your Supabase tables are created using `apps/server/db/schema.sql`.
+1.  **Database**: Ensure your Supabase tables are created using `server/db/schema.sql`.
 2.  **Render**: 
     - Create a new **Blueprint** on Render pointing to this repository.
     - It will detect `render.yaml` and create the `love-tracker-server` service.
@@ -390,11 +404,11 @@ cd packages/shared && npx tsc --build
 
 ### Mobile (Google Play Store)
 
-1.  **Update URL**: Set your production backend URL in `apps/mobile/app.json` (`extra.apiUrl`).
+1.  **Update URL**: The production backend URL is set in `mobile/app.json` (`extra.apiUrl`).
 2.  **EAS Build**:
-    - Log in: `npx eas login`
-    - Build APK for testers: `npm run build:preview --workspace=apps/mobile`
-    - Build AAB for Play Store: `npm run build:production --workspace=apps/mobile`
+    - Log in: `npx eas login` (inside `mobile/`)
+    - Build APK for testers: `npm run build:preview` (inside `mobile/`)
+    - Build AAB for Play Store: `npm run build:production` (inside `mobile/`)
 
 ---
 
@@ -403,10 +417,10 @@ cd packages/shared && npx tsc --build
 1. **Offline-first.** All reads/writes go to SQLite first. Server sync is additive.
 2. **DB layer is separate from state.** `db/` files hold SQL, `store/` holds Zustand.
    Never call SQLite directly from a component — always go through the store or a db helper.
-3. **Shared types live in `packages/shared`.** If a type is used by both mobile and server,
-   it belongs there. Do not duplicate types.
+3. **Shared types live per-app.** `mobile/src/types/shared.ts` and `server/shared.ts` are
+   kept in sync manually. Do not import across app boundaries.
 4. **Theme colors must come from `ThemeContext`.** Never hardcode hex colors in screens or
-   components — use `theme.primary`, `theme.surface`, etc.
+   components — use `theme.colors.primary`, `theme.colors.surface`, etc.
 5. **All user-facing strings must go through i18next** (`t('key')`). Add keys to both
    `en.json` and `pt.json` when introducing new UI text.
 6. **Privacy respect.** When querying events for partner-visible features, use the
@@ -415,7 +429,5 @@ cd packages/shared && npx tsc --build
    theme and language preferences go in MMKV.
 8. **Keep the server thin.** The server is a sync relay, not the source of truth.
    The device database is the source of truth.
-9. **TypeScript project references for cross-package imports.** `packages/shared` is a
-   composite TypeScript project. Consumers (server, mobile) reference it via `"references"`
-   in their `tsconfig.json` and import from its compiled `dist/` output — never from
-   `.ts` source directly. After changing `packages/shared`, run `npx tsc --build` inside it.
+9. **No workspaces or Turborepo.** Each app is independent. Run commands inside
+   `mobile/` or `server/` directly, or use root-level convenience scripts.
