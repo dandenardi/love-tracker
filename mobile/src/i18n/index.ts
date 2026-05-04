@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import * as Localization from 'expo-localization';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import en from '@/locales/en.json';
@@ -24,11 +25,13 @@ i18n.use(initReactI18next).init({
 });
 
 // Load saved language preference and update if different from device locale
-AsyncStorage.getItem(LANG_KEY).then((saved) => {
-  if (saved && supportedLanguages.includes(saved) && saved !== i18n.language) {
-    i18n.changeLanguage(saved);
-  }
-});
+if (typeof window !== 'undefined') {
+  AsyncStorage.getItem(LANG_KEY).then((saved) => {
+    if (saved && supportedLanguages.includes(saved) && saved !== i18n.language) {
+      i18n.changeLanguage(saved);
+    }
+  });
+}
 
 export function setLanguage(lang: string) {
   AsyncStorage.setItem(LANG_KEY, lang);

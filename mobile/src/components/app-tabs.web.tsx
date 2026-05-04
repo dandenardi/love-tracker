@@ -71,7 +71,7 @@ export function CustomTabList({ children }: TabListProps) {
           </Pressable>
         </ExternalLink>
       </ThemedView>
-    </View>
+    </ViewComponent>
   );
 }
 

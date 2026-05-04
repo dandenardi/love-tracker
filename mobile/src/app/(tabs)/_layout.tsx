@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -14,7 +15,11 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 export default function TabLayout() {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const { bottom } = useSafeAreaInsets();
   const c = theme.colors;
+
+  // Adjust height based on safe area bottom inset
+  const TAB_BAR_HEIGHT = Platform.OS === 'android' ? 60 + bottom : 60;
 
   return (
     <Tabs
@@ -24,8 +29,8 @@ export default function TabLayout() {
           backgroundColor: c.tabBar,
           borderTopColor: c.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: TAB_BAR_HEIGHT,
+          paddingBottom: Platform.OS === 'android' ? bottom + 8 : 8,
         },
         tabBarActiveTintColor: c.tabBarActive,
         tabBarInactiveTintColor: c.tabBarInactive,

@@ -6,9 +6,9 @@ import { LoveEvent, EventTypeKey } from '@/types/shared';
 export type { LoveEvent, EventTypeKey };
 
 // ── CREATE ─────────────────────────────────────────────────────────────────
-export function createEvent(
+export async function createEvent(
   payload: Omit<LoveEvent, 'id' | 'logged_at' | 'synced'>
-): LoveEvent {
+): Promise<LoveEvent> {
   const db = getDb();
   const event: LoveEvent = {
     ...payload,
@@ -17,7 +17,7 @@ export function createEvent(
     synced: 0,
     is_private: payload.is_private ?? 0,
   };
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -38,9 +38,9 @@ export function createEvent(
 }
 
 // ── UPSERT (for sync) ───────────────────────────────────────────────────────
-export function upsertEvent(event: LoveEvent): void {
+export async function upsertEvent(event: LoveEvent): Promise<void> {
   const db = getDb();
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
@@ -77,7 +77,7 @@ export function getEventsByContact(contactId: string): LoveEvent[] {
   );
 }
 
-export function getEventsByDate(contactId: string, dateMs: number): LoveEvent[] {
+export async function getEventsByDate(contactId: string, dateMs: number): Promise<LoveEvent[]> {
   const db = getDb();
   // Match events that occurred on the same calendar day
   const startOfDay = new Date(dateMs);
@@ -85,7 +85,7 @@ export function getEventsByDate(contactId: string, dateMs: number): LoveEvent[] 
   const endOfDay = new Date(dateMs);
   endOfDay.setHours(23, 59, 59, 999);
 
-  return db.getAllSync<LoveEvent>(
+  return await db.getAllAsync<LoveEvent>(
     `SELECT * FROM events
      WHERE contact_id = ? AND occurred_at >= ? AND occurred_at <= ?
      ORDER BY occurred_at ASC`,
@@ -93,67 +93,72 @@ export function getEventsByDate(contactId: string, dateMs: number): LoveEvent[] 
   );
 }
 
-export function getEventsForMonth(
+export async function getEventsForMonth(
   contactId: string,
   year: number,
   month: number // 0-indexed
-): LoveEvent[] {
+): Promise<LoveEvent[]> {
   const db = getDb();
   const start = new Date(year, month, 1).getTime();
   const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
-  return db.getAllSync<LoveEvent>(
+  return await db.getAllAsync<LoveEvent>(
     `SELECT * FROM events WHERE contact_id = ? AND occurred_at >= ? AND occurred_at <= ?`,
     [contactId, start, end]
   );
 }
 
-export function getAllEvents(contactId: string, limit = 100): LoveEvent[] {
+export async function getAllEvents(contactId: string, limit = 100): Promise<LoveEvent[]> {
   const db = getDb();
-  return db.getAllSync<LoveEvent>(
+  return await db.getAllAsync<LoveEvent>(
     `SELECT * FROM events WHERE contact_id = ? ORDER BY occurred_at DESC LIMIT ?`,
     [contactId, limit]
   );
 }
 
 // ── UPDATE ──────────────────────────────────────────────────────────────────
-export function updateEvent(id: string, patch: Partial<Omit<LoveEvent, 'id' | 'logged_at'>>): void {
+export async function updateEvent(id: string, patch: Partial<Omit<LoveEvent, 'id' | 'logged_at'>>): Promise<void> {
   const db = getDb();
   const fields = Object.keys(patch) as (keyof typeof patch)[];
   if (fields.length === 0) return;
   const setClauses = fields.map((f) => `${String(f)} = ?`).join(', ');
   const values = fields.map((f) => patch[f] ?? null);
-  db.runSync(`UPDATE events SET ${setClauses} WHERE id = ?`, [...values, id]);
+  await db.runAsync(`UPDATE events SET ${setClauses} WHERE id = ?`, [...values, id]);
 }
 
 // ── DELETE ──────────────────────────────────────────────────────────────────
-export function deleteEvent(id: string): void {
+export async function deleteEvent(id: string): Promise<void> {
   const db = getDb();
-  db.runSync(`DELETE FROM events WHERE id = ?`, [id]);
+  await db.runAsync(`DELETE FROM events WHERE id = ?`, [id]);
+}
+
+export async function markEventsAsSynced(contactId: string): Promise<void> {
+  const db = getDb();
+  await db.runAsync(`UPDATE events SET synced = 1 WHERE contact_id = ?`, [contactId]);
 }
 
 // ── PUBLIC HELPERS (Partner Sync safe — never includes private events) ───────
-export function getPublicEventsForMonth(
+export async function getPublicEventsForMonth(
   contactId: string,
   year: number,
   month: number
-): LoveEvent[] {
+): Promise<LoveEvent[]> {
   const db = getDb();
   const start = new Date(year, month, 1).getTime();
   const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
-  return db.getAllSync<LoveEvent>(
+  return await db.getAllAsync<LoveEvent>(
     `SELECT * FROM events
      WHERE contact_id = ? AND occurred_at >= ? AND occurred_at <= ? AND is_private = 0`,
     [contactId, start, end]
   );
 }
 
-export function getPublicEventsByDate(contactId: string, dateMs: number): LoveEvent[] {
+export async function getPublicEventsByDate(contactId: string, dateMs: number): Promise<LoveEvent[]> {
   const db = getDb();
   const startOfDay = new Date(dateMs);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(dateMs);
   endOfDay.setHours(23, 59, 59, 999);
-  return db.getAllSync<LoveEvent>(
+  return await db.getAllAsync<LoveEvent>(
     `SELECT * FROM events
      WHERE contact_id = ? AND occurred_at >= ? AND occurred_at <= ? AND is_private = 0
      ORDER BY occurred_at ASC`,
@@ -162,18 +167,18 @@ export function getPublicEventsByDate(contactId: string, dateMs: number): LoveEv
 }
 
 // ── STATS ───────────────────────────────────────────────────────────────────
-export function getEventCountByType(contactId: string): Record<string, number> {
+export async function getEventCountByType(contactId: string): Promise<Record<string, number>> {
   const db = getDb();
-  const rows = db.getAllSync<{ type: string; count: number }>(
+  const rows = await db.getAllAsync<{ type: string; count: number }>(
     `SELECT type, COUNT(*) as count FROM events WHERE contact_id = ? GROUP BY type`,
     [contactId]
   );
   return Object.fromEntries(rows.map((r) => [r.type, r.count]));
 }
 
-export function getDaysSinceLast(contactId: string, type: EventTypeKey): number | null {
+export async function getDaysSinceLast(contactId: string, type: EventTypeKey): Promise<number | null> {
   const db = getDb();
-  const row = db.getFirstSync<{ occurred_at: number }>(
+  const row = await db.getFirstAsync<{ occurred_at: number }>(
     `SELECT occurred_at FROM events WHERE contact_id = ? AND type = ? ORDER BY occurred_at DESC LIMIT 1`,
     [contactId, type]
   );

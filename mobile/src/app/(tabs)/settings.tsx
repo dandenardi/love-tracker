@@ -8,6 +8,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { THEMES, type ThemeKey } from '@/constants/themes';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
 import { useSyncStore } from '@/store/useSyncStore';
+import { useContactsStore } from '@/store/useContactsStore';
 import { setLanguage } from '@/i18n';
 
 function SectionHeader({ label }: { label: string }) {
@@ -41,6 +42,22 @@ function PartnerSyncSection() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [pairCode, setPairCode] = useState('');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [targetContactId, setTargetContactId] = useState<string | null>(null);
+  const [shareHistory, setShareHistory] = useState(true);
+  
+  const localContacts = useContactsStore(s => s.contacts).filter(c => !c.partner_user_id);
+
+  React.useEffect(() => {
+    let interval: any;
+    if (inviteCode) {
+      interval = setInterval(() => {
+        sync.sync();
+      }, 10000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [inviteCode]);
 
   const handleAuth = async () => {
     try {
@@ -56,8 +73,10 @@ function PartnerSyncSection() {
 
   const handlePair = async () => {
     try {
-      await sync.pairWithCode(pairCode);
+      await sync.pairWithCode(pairCode, targetContactId || undefined, shareHistory);
       setPairCode('');
+      setTargetContactId(null);
+      setShareHistory(true);
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
@@ -70,6 +89,17 @@ function PartnerSyncSection() {
     } catch (err: any) {
       Alert.alert('Error', err.message);
     }
+  };
+
+  const handleUnpair = (partnerId: string, partnerAlias: string) => {
+    Alert.alert(
+      t('settings.unpairConfirmTitle'),
+      t('settings.unpairConfirmDesc', { name: partnerAlias }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('settings.unpair'), style: 'destructive', onPress: () => sync.unpair(partnerId) }
+      ]
+    );
   };
 
   if (!sync.userId) {
@@ -126,64 +156,124 @@ function PartnerSyncSection() {
     <>
       <SectionHeader label={t('settings.partner')} />
       <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-        <SettingRow label={`Hi, ${sync.alias}`} desc={sync.partnerId ? `Paired with ${sync.partnerAlias}` : 'Not paired yet'}>
+        <SettingRow label={`Hi, ${sync.alias}`} desc={t('settings.partnershipsActive', { count: sync.partners.filter(p => p.status === 'active').length })}>
           <TouchableOpacity onPress={sync.logout}>
             <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Logout</Text>
           </TouchableOpacity>
         </SettingRow>
 
-        {!sync.partnerId && (
-          <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
-            {inviteCode ? (
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 4 }}>Your Pair Code:</Text>
-                <Text style={{ color: c.primary, fontSize: 24, fontWeight: '800', letterSpacing: 2 }}>{inviteCode}</Text>
-                <Text style={{ color: c.textMuted, fontSize: 10, marginTop: 4 }}>Expires in 30 minutes</Text>
+        {sync.partners.length > 0 && (
+          <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+            {sync.partners.map((p, idx) => (
+              <SettingRow 
+                key={p.id} 
+                label={p.alias} 
+                desc={p.status === 'active' ? t('settings.activeSync') : t('settings.unpaired')}
+                last={idx === sync.partners.length - 1 && !inviteCode}
+              >
+                {p.status === 'active' && (
+                  <TouchableOpacity onPress={() => handleUnpair(p.id, p.alias)}>
+                    <Text style={{ color: c.error, fontSize: 12, fontWeight: '600' }}>{t('settings.unpair')}</Text>
+                  </TouchableOpacity>
+                )}
+              </SettingRow>
+            ))}
+          </View>
+        )}
+
+        <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+          <Text style={[styles.rowLabel, { color: c.text, fontSize: 12, marginBottom: 12 }]}>{t('settings.addNewPartner')}</Text>
+          
+          {inviteCode ? (
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 4 }}>Your Pair Code:</Text>
+              <Text style={{ color: c.primary, fontSize: 24, fontWeight: '800', letterSpacing: 2 }}>{inviteCode}</Text>
+              <Text style={{ color: c.textMuted, fontSize: 10, marginTop: 4 }}>Expires in 30 minutes</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 }}>
+                <ActivityIndicator size="small" color={c.primary} />
+                <Text style={{ color: c.textSecondary, fontSize: 13 }}>Waiting for partner...</Text>
               </View>
-            ) : (
-              <TouchableOpacity onPress={handleGenerateInvite} style={[styles.secondaryBtn, { borderColor: c.primary }]}>
-                <Text style={{ color: c.primary, fontWeight: '700' }}>Generate Invite Code</Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={{ height: 1, backgroundColor: c.border, marginVertical: 16 }} />
-
-            <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 8 }}>Or enter partner's code:</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                placeholder="ABC-123"
-                placeholderTextColor={c.textMuted}
-                style={[styles.input, { flex: 1, marginBottom: 0, borderColor: c.border, color: c.text }]}
-                value={pairCode}
-                onChangeText={setPairCode}
-                autoCapitalize="characters"
-              />
-              <TouchableOpacity onPress={handlePair} style={[styles.primaryBtn, { backgroundColor: c.primary, paddingHorizontal: 20 }]}>
-                <Text style={styles.btnText}>Pair</Text>
-              </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {sync.partnerId && (
-          <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
-            <TouchableOpacity
-              onPress={() => sync.sync()}
-              disabled={sync.isSyncing}
-              style={[styles.primaryBtn, { backgroundColor: c.primary, flexDirection: 'row', gap: 8 }]}
-            >
-              {sync.isSyncing ? <ActivityIndicator color="#FFF" /> : (
-                <>
-                  <Text style={{ fontSize: 16 }}>🔄</Text>
-                  <Text style={styles.btnText}>Sync Now</Text>
-                </>
-              )}
+          ) : (
+            <TouchableOpacity onPress={handleGenerateInvite} style={[styles.secondaryBtn, { borderColor: c.primary, paddingVertical: 10 }]}>
+              <Text style={{ color: c.primary, fontWeight: '700', fontSize: 14 }}>{t('settings.generateInvite')}</Text>
             </TouchableOpacity>
-            <Text style={{ color: c.textMuted, fontSize: 10, textAlign: 'center', marginTop: 8 }}>
-              Last synced: {sync.lastSyncedAt > 0 ? new Date(sync.lastSyncedAt).toLocaleString() : 'Never'}
-            </Text>
+          )}
+
+          <View style={{ height: 1, backgroundColor: c.border, marginVertical: 16 }} />
+
+          <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 8 }}>{t('settings.enterPartnerCode')}</Text>
+          
+          {localContacts.length > 0 && (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={{ color: c.textMuted, fontSize: 10, marginBottom: 6 }}>{t('settings.linkExisting').toUpperCase()}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                <TouchableOpacity 
+                  onPress={() => setTargetContactId(null)}
+                  style={[styles.chip, { borderColor: !targetContactId ? c.primary : c.border, backgroundColor: !targetContactId ? c.primary + '25' : 'transparent' }]}
+                >
+                  <Text style={{ color: !targetContactId ? c.primary : c.textMuted, fontSize: 11 }}>{t('settings.none')}</Text>
+                </TouchableOpacity>
+                {localContacts.map(lc => (
+                  <TouchableOpacity 
+                    key={lc.id}
+                    onPress={() => setTargetContactId(lc.id)}
+                    style={[styles.chip, { borderColor: targetContactId === lc.id ? c.primary : c.border, backgroundColor: targetContactId === lc.id ? c.primary + '25' : 'transparent' }]}
+                  >
+                    <Text style={{ color: targetContactId === lc.id ? c.primary : c.textMuted, fontSize: 11 }}>{lc.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {targetContactId && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, padding: 8, backgroundColor: c.surfaceAlt, borderRadius: 8 }}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={{ color: c.text, fontSize: 12, fontWeight: '600' }}>{t('settings.shareHistory')}</Text>
+                    <Text style={{ color: c.textMuted, fontSize: 10 }}>{t('settings.shareHistoryDesc')}</Text>
+                  </View>
+                  <Switch 
+                    value={shareHistory} 
+                    onValueChange={setShareHistory} 
+                    trackColor={{ true: c.primary }}
+                    thumbColor="#FFF"
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              placeholder="ABC-123"
+              placeholderTextColor={c.textMuted}
+              style={[styles.input, { flex: 1, marginBottom: 0, borderColor: c.border, color: c.text, paddingVertical: 8 }]}
+              value={pairCode}
+              onChangeText={setPairCode}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity onPress={handlePair} style={[styles.primaryBtn, { backgroundColor: c.primary, paddingHorizontal: 20, paddingVertical: 8 }]}>
+              <Text style={styles.btnText}>{t('settings.pair')}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
+
+        <View style={{ padding: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+          <TouchableOpacity
+            onPress={() => sync.sync()}
+            disabled={sync.isSyncing}
+            style={[styles.primaryBtn, { backgroundColor: c.primary, flexDirection: 'row', gap: 8 }]}
+          >
+            {sync.isSyncing ? <ActivityIndicator color="#FFF" /> : (
+              <>
+                <Text style={{ fontSize: 16 }}>🔄</Text>
+                <Text style={styles.btnText}>{t('settings.syncAll')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <Text style={{ color: c.textMuted, fontSize: 10, textAlign: 'center', marginTop: 8 }}>
+            Last synced: {sync.lastSyncedAt > 0 ? new Date(sync.lastSyncedAt).toLocaleString() : 'Never'}
+          </Text>
+        </View>
       </View>
     </>
   );

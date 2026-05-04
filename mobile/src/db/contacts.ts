@@ -13,14 +13,14 @@ export interface Contact {
   created_at: number;
 }
 
-export function createContact(payload: Omit<Contact, 'id' | 'created_at'>): Contact {
+export async function createContact(payload: Omit<Contact, 'id' | 'created_at'>): Promise<Contact> {
   const db = getDb();
   const contact: Contact = {
     ...payload,
     id: uuidv4(),
     created_at: Date.now(),
   };
-  db.runSync(
+  await db.runAsync(
     `INSERT INTO contacts (id, name, nickname, avatar_emoji, color, is_partner, partner_user_id, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -37,28 +37,28 @@ export function createContact(payload: Omit<Contact, 'id' | 'created_at'>): Cont
   return contact;
 }
 
-export function getAllContacts(): Contact[] {
+export async function getAllContacts(): Promise<Contact[]> {
   const db = getDb();
-  return db.getAllSync<Contact>(
+  return await db.getAllAsync<Contact>(
     `SELECT * FROM contacts ORDER BY created_at ASC`
   );
 }
 
-export function getContact(id: string): Contact | null {
+export async function getContact(id: string): Promise<Contact | null> {
   const db = getDb();
-  return db.getFirstSync<Contact>(`SELECT * FROM contacts WHERE id = ?`, [id]) ?? null;
+  return (await db.getFirstAsync<Contact>(`SELECT * FROM contacts WHERE id = ?`, [id])) ?? null;
 }
 
-export function updateContact(id: string, patch: Partial<Omit<Contact, 'id'>>): void {
+export async function updateContact(id: string, patch: Partial<Omit<Contact, 'id'>>): Promise<void> {
   const db = getDb();
   const fields = Object.keys(patch) as (keyof typeof patch)[];
   if (fields.length === 0) return;
   const setClauses = fields.map((f) => `${f} = ?`).join(', ');
   const values = fields.map((f) => patch[f] ?? null);
-  db.runSync(`UPDATE contacts SET ${setClauses} WHERE id = ?`, [...values, id]);
+  await db.runAsync(`UPDATE contacts SET ${setClauses} WHERE id = ?`, [...values, id]);
 }
 
-export function deleteContact(id: string): void {
+export async function deleteContact(id: string): Promise<void> {
   const db = getDb();
-  db.runSync(`DELETE FROM contacts WHERE id = ?`, [id]);
+  await db.runAsync(`DELETE FROM contacts WHERE id = ?`, [id]);
 }
