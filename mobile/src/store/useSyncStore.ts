@@ -1,26 +1,40 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, syncApi, setAccessToken } from '@/services/syncApi';
-import { type ServerEvent } from '@/types/shared';
+import { authApi, syncApi, setAccessToken, onSessionExpired } from '@/services/syncApi';
+import { storage } from '@/services/storage';
+import { Partner, type ServerEvent } from '@/types/shared';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
 
 const STORAGE_KEY = '@love-tracker/sync';
 
 async function loadSyncState() {
-  const [userId, alias, partnerId, partnerAlias, lastSyncedAt] = await Promise.all([
+  const [userId, alias, partnersJson, lastSyncedAt] = await Promise.all([
     AsyncStorage.getItem(`${STORAGE_KEY}/userId`),
     AsyncStorage.getItem(`${STORAGE_KEY}/alias`),
-    AsyncStorage.getItem(`${STORAGE_KEY}/partnerId`),
-    AsyncStorage.getItem(`${STORAGE_KEY}/partnerAlias`),
+    AsyncStorage.getItem(`${STORAGE_KEY}/partners`),
     AsyncStorage.getItem(`${STORAGE_KEY}/lastSyncedAt`),
   ]);
+  
+  let partners: Partner[] = [];
+  try {
+    if (partnersJson) {
+      // Basic validation: must start with [
+      if (partnersJson.trim().startsWith('[')) {
+        partners = JSON.parse(partnersJson);
+      } else {
+        console.warn('partnersJson does not look like a JSON array, ignoring:', partnersJson.substring(0, 50));
+      }
+    }
+  } catch (e: any) {
+    console.error('Failed to parse partners JSON:', e.message);
+    console.error('Offending string (first 100 chars):', partnersJson?.substring(0, 100));
+  }
+
   return {
     userId: userId || null,
     alias: alias || null,
-    partnerId: partnerId || null,
-    partnerAlias: partnerAlias || null,
+    partners,
     lastSyncedAt: lastSyncedAt ? parseInt(lastSyncedAt, 10) : 0,
   };
 }
@@ -28,8 +42,7 @@ async function loadSyncState() {
 interface SyncState {
   userId: string | null;
   alias: string | null;
-  partnerId: string | null;
-  partnerAlias: string | null;
+  partners: Partner[];
   lastSyncedAt: number;
   isSyncing: boolean;
   error: string | null;
@@ -39,16 +52,15 @@ interface SyncState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   generateInvite: () => Promise<string>;
-  pairWithCode: (code: string) => Promise<void>;
-  unpair: () => Promise<void>;
+  pairWithCode: (code: string, contactId?: string, includeHistory?: boolean) => Promise<void>;
+  unpair: (partnerId: string) => Promise<void>;
   sync: () => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
   userId: null,
   alias: null,
-  partnerId: null,
-  partnerAlias: null,
+  partners: [],
   lastSyncedAt: 0,
   isSyncing: false,
   error: null,
@@ -57,7 +69,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     try {
       const saved = await loadSyncState();
       set(saved);
-      const refreshToken = await SecureStore.getItemAsync('refreshToken');
+      const refreshToken = await storage.getItem('refreshToken');
       if (refreshToken) {
         const { accessToken } = await authApi.refresh(refreshToken);
         setAccessToken(accessToken);
@@ -71,7 +83,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     set({ isSyncing: true, error: null });
     try {
       const res = await authApi.register({ email, password, alias });
-      await SecureStore.setItemAsync('refreshToken', res.refreshToken);
+      await storage.setItem('refreshToken', res.refreshToken);
       setAccessToken(res.accessToken);
       await Promise.all([
         AsyncStorage.setItem(`${STORAGE_KEY}/userId`, res.userId),
@@ -88,7 +100,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     set({ isSyncing: true, error: null });
     try {
       const res = await authApi.login({ email, password });
-      await SecureStore.setItemAsync('refreshToken', res.refreshToken);
+      await storage.setItem('refreshToken', res.refreshToken);
       setAccessToken(res.accessToken);
       await Promise.all([
         AsyncStorage.setItem(`${STORAGE_KEY}/userId`, res.userId),
@@ -103,16 +115,15 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync('refreshToken');
+    await storage.deleteItem('refreshToken');
     setAccessToken(null);
     await Promise.all([
       AsyncStorage.removeItem(`${STORAGE_KEY}/userId`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/alias`),
-      AsyncStorage.removeItem(`${STORAGE_KEY}/partnerId`),
-      AsyncStorage.removeItem(`${STORAGE_KEY}/partnerAlias`),
+      AsyncStorage.removeItem(`${STORAGE_KEY}/partners`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/lastSyncedAt`),
     ]);
-    set({ userId: null, alias: null, partnerId: null, partnerAlias: null, lastSyncedAt: 0 });
+    set({ userId: null, alias: null, partners: [], lastSyncedAt: 0 });
   },
 
   generateInvite: async () => {
@@ -120,15 +131,43 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     return res.code;
   },
 
-  pairWithCode: async (code) => {
+  pairWithCode: async (code, contactId, includeHistory = true) => {
     set({ isSyncing: true, error: null });
     try {
       const res = await authApi.pair(code);
-      await Promise.all([
-        AsyncStorage.setItem(`${STORAGE_KEY}/partnerId`, res.partnerId),
-        AsyncStorage.setItem(`${STORAGE_KEY}/partnerAlias`, res.partnerAlias),
-      ]);
-      set({ partnerId: res.partnerId, partnerAlias: res.partnerAlias, isSyncing: false });
+      const newPartner: Partner = {
+        id: res.partnerId,
+        alias: res.partnerAlias,
+        partnershipId: res.partnershipId,
+        status: 'active'
+      };
+      
+      const partners = [...get().partners.filter(p => p.id !== res.partnerId), newPartner];
+      
+      // Link to existing contact if provided, or create a new one
+      if (contactId) {
+        // If history should NOT be shared, mark all current events as synced (server thinks they are already there)
+        if (!includeHistory) {
+          useEventsStore.getState().markContactEventsAsSynced(contactId);
+        }
+
+        useContactsStore.getState().editContact(contactId, {
+          is_partner: 1,
+          partner_user_id: res.partnerId
+        });
+      } else {
+        // Auto-create contact for the new partner
+        useContactsStore.getState().addContact({
+          name: res.partnerAlias,
+          avatar_emoji: '❤️',
+          color: '#FF6B6B',
+          is_partner: 1,
+          partner_user_id: res.partnerId,
+        });
+      }
+
+      await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
+      set({ partners, isSyncing: false });
       await get().sync();
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
@@ -136,82 +175,129 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     }
   },
 
-  unpair: async () => {
-    await authApi.unpair();
-    await Promise.all([
-      AsyncStorage.removeItem(`${STORAGE_KEY}/partnerId`),
-      AsyncStorage.removeItem(`${STORAGE_KEY}/partnerAlias`),
-    ]);
-    set({ partnerId: null, partnerAlias: null });
+  unpair: async (partnerId) => {
+    set({ isSyncing: true, error: null });
+    try {
+      await authApi.unpair(partnerId);
+      const partners = get().partners.map(p => 
+        p.id === partnerId ? { ...p, status: 'unpaired' as const } : p
+      );
+      await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
+      set({ partners, isSyncing: false });
+    } catch (err: any) {
+      set({ error: err.message, isSyncing: false });
+      throw err;
+    }
   },
 
   sync: async () => {
-    const { userId, isSyncing, lastSyncedAt } = get();
+    const { userId, isSyncing, lastSyncedAt, partners } = get();
     if (!userId || isSyncing) return;
 
     set({ isSyncing: true, error: null });
     try {
-      const events = useEventsStore.getState().events;
-      const unsyncedEvents = events.filter(e => e.synced === 0 && e.is_private === 0);
+      const eventsStore = useEventsStore.getState();
+      const contactsStore = useContactsStore.getState();
+      
+      const unsyncedEvents = eventsStore.events.filter(e => e.synced === 0 && e.is_private === 0);
 
+      // 1. Group events by partner and push
       if (unsyncedEvents.length > 0) {
-        await syncApi.push({
-          events: unsyncedEvents.map(e => ({
-            clientId: e.id,
-            type: e.type,
-            title: e.title,
-            note: e.note,
-            intensity: e.intensity,
-            mood_tag: e.mood_tag,
-            occurred_at: e.occurred_at,
-            logged_at: e.logged_at,
-          }))
-        });
-        unsyncedEvents.forEach(e => {
-          useEventsStore.getState().editEvent(e.id, { synced: 1 });
-        });
+        const eventsToPush: ServerEvent[] = [];
+        
+        for (const e of unsyncedEvents) {
+          const contact = contactsStore.contacts.find(c => c.id === e.contact_id);
+          const partner = partners.find(p => p.id === contact?.partner_user_id && p.status === 'active');
+          
+          if (partner) {
+            eventsToPush.push({
+              clientId: e.id,
+              partnershipId: partner.partnershipId,
+              type: e.type,
+              title: e.title,
+              note: e.note,
+              intensity: e.intensity,
+              mood_tag: e.mood_tag,
+              occurred_at: e.occurred_at,
+              logged_at: e.logged_at,
+            });
+          }
+        }
+
+        if (eventsToPush.length > 0) {
+          await syncApi.push({ events: eventsToPush });
+          eventsToPush.forEach(e => {
+            eventsStore.editEvent(e.clientId, { synced: 1 });
+          });
+        }
       }
 
+      // 2. Pull from server
       const res = await syncApi.pull(lastSyncedAt);
 
-      if (res.events.length > 0 || res.deletedIds.length > 0) {
-        const { partnerId } = get();
-        let partnerContactId = useContactsStore.getState().contacts.find(
-          c => c.partner_user_id === partnerId
-        )?.id;
+      // 3. Update partners list from server and ensure contacts exist
+      if (res.partners) {
+        set({ partners: res.partners });
+        await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(res.partners));
 
-        if (partnerId && !partnerContactId) {
-          const partnerAlias = get().partnerAlias || 'Partner';
-          const newContact = useContactsStore.getState().addContact({
-            name: partnerAlias,
-            avatar_emoji: '❤️',
-            color: '#FF6B6B',
-            is_partner: 1,
-            partner_user_id: partnerId,
-          });
-          partnerContactId = newContact.id;
-        }
-
-        if (partnerContactId) {
-          res.events.forEach((se: ServerEvent) => {
-            useEventsStore.getState().syncEvent({
-              id: se.clientId,
-              contact_id: partnerContactId!,
-              type: se.type,
-              title: se.title,
-              note: se.note,
-              intensity: se.intensity,
-              mood_tag: se.mood_tag,
-              occurred_at: se.occurred_at,
-              logged_at: se.logged_at,
-              synced: 1,
-              is_private: 0,
+        // Proactively create contacts for any new active partners
+        const currentContacts = useContactsStore.getState().contacts;
+        for (const p of res.partners) {
+          if (p.status === 'active' && !currentContacts.some(c => c.partner_user_id === p.id)) {
+            useContactsStore.getState().addContact({
+              name: p.alias,
+              avatar_emoji: '❤️',
+              color: '#FF6B6B',
+              is_partner: 1,
+              partner_user_id: p.id,
             });
-          });
-          res.deletedIds.forEach((id: string) => {
-            useEventsStore.getState().removeEvent(id);
+          }
+        }
+      }
+
+      // 4. Process pulled events and ensure contacts exist
+      if (res.events.length > 0) {
+        // Track contacts locally to avoid duplicates in the same sync loop
+        let currentContacts = [...contactsStore.contacts];
+        
+        for (const se of res.events) {
+          // Find or create contact for this partner
+          let localContact = currentContacts.find(c => c.partner_user_id === se.partnerId);
+          
+          if (!localContact) {
+            const partnerInfo = res.partners.find(p => p.id === se.partnerId);
+            const newContact = contactsStore.addContact({
+              name: partnerInfo?.alias || 'Partner',
+              avatar_emoji: '❤️',
+              color: '#FF6B6B',
+              is_partner: 1,
+              partner_user_id: se.partnerId,
+            });
+            localContact = newContact;
+            currentContacts.push(newContact);
+          }
+
+          await eventsStore.syncEvent({
+            id: se.clientId,
+            contact_id: localContact.id,
+            type: se.type,
+            title: se.title,
+            note: se.note,
+            intensity: se.intensity,
+            mood_tag: se.mood_tag,
+            occurred_at: se.occurred_at,
+            logged_at: se.logged_at,
+            synced: 1,
+            is_private: 0,
           });
         }
+      }
+
+      // 5. Process deletions
+      if (res.deletedIds.length > 0) {
+        res.deletedIds.forEach((id: string) => {
+          eventsStore.removeEvent(id);
+        });
       }
 
       const now = Date.now();
@@ -223,3 +309,8 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     }
   },
 }));
+
+// Register session expiration handler
+onSessionExpired(() => {
+  useSyncStore.getState().logout();
+});

@@ -76,7 +76,8 @@
   "calendar": {
     "title": "Calendário",
     "noEvents": "Nenhum evento neste dia",
-    "eventsOnDay": "Eventos em {{date}}"
+    "eventsOnDay": "Eventos em {{date}}",
+    "addEvent": "Adicionar Evento"
   },
   "timeline": {
     "title": "Linha do Tempo",
@@ -119,7 +120,22 @@
     "deleteAllConfirm": "Isso excluirá permanentemente todos os eventos e contatos. Tem certeza?",
     "version": "Versão",
     "partner": "Sincronização com Parceiro",
-    "partnerDesc": "Em breve"
+    "partnerDesc": "Sincronize eventos com seus parceiros",
+    "partnershipsActive": "{{count}} parcerias ativas",
+    "activeSync": "Sincronização ativa",
+    "unpaired": "Despareado",
+    "unpair": "Desparear",
+    "addNewPartner": "ADICIONAR NOVO PARCEIRO",
+    "generateInvite": "Gerar Código de Convite",
+    "enterPartnerCode": "Ou digite o código do parceiro:",
+    "pair": "Parear",
+    "syncAll": "Sincronizar Todos os Parceiros",
+    "unpairConfirmTitle": "Desparear Parceiro",
+    "unpairConfirmDesc": "Tem certeza que deseja parar de sincronizar com {{name}}? O histórico será preservado localmente.",
+    "linkExisting": "Vincular a pessoa existente",
+    "none": "Nenhuma (Criar nova)",
+    "shareHistory": "Compartilhar histórico anterior",
+    "shareHistoryDesc": "O parceiro verá os eventos registrados antes do pareamento"
   },
   "privacy": {
     "unlock": "Desbloquear Love Tracker",

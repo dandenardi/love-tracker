@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, KeyboardAvoidingView, Platform, Switch,
+  ScrollView, KeyboardAvoidingView, Platform, Switch, Keyboard, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DateTimePickerWrapper } from '@/components/DateTimePickerWrapper';
 import { useTheme } from '@/context/ThemeContext';
 import { useEventsStore } from '@/store/useEventsStore';
 import { useContactsStore } from '@/store/useContactsStore';
 import { EVENT_TYPES, MOOD_TAGS, EVENT_TYPE_MAP } from '@/constants/eventTypes';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function LogEventModal() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ type?: string; contactId?: string }>();
+  const params = useLocalSearchParams<{ type?: string; contactId?: string; date?: string }>();
 
   const logEvent = useEventsStore((s) => s.logEvent);
   const activeContactId = useContactsStore((s) => s.activeContactId);
@@ -27,34 +28,61 @@ export default function LogEventModal() {
   const [selectedType, setSelectedType] = useState(params.type ?? 'SPECIAL');
   const [note, setNote] = useState('');
   const [title, setTitle] = useState('');
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   const [intensity, setIntensity] = useState(0);
   const [moodTag, setMoodTag] = useState<string | null>(null);
-  const [occurredAt, setOccurredAt] = useState(new Date());
+  
+  // Initialize date from param if present (format: yyyy-MM-dd)
+  const initialDate = params.date ? new Date(params.date + 'T12:00:00') : new Date();
+  const [occurredAt, setOccurredAt] = useState(initialDate);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
 
   const cfg = EVENT_TYPE_MAP[selectedType as keyof typeof EVENT_TYPE_MAP];
 
-  const handleSave = () => {
-    logEvent({
-      contact_id: contactId,
-      type: selectedType as any,
-      title: selectedType === 'CUSTOM' ? title : undefined,
-      note: note || undefined,
-      intensity,
-      mood_tag: moodTag ?? undefined,
-      occurred_at: occurredAt.getTime(),
-      is_private: isPrivate ? 1 : 0,
-    });
-    router.back();
+  const handleSave = async () => {
+    if (!contactId) {
+      Alert.alert(t('common.error'), t('contacts.noContacts'));
+      return;
+    }
+
+    try {
+      Keyboard.dismiss();
+      await logEvent({
+        contact_id: contactId,
+        type: selectedType as any,
+        title: selectedType === 'CUSTOM' ? title : undefined,
+        note: note || undefined,
+        intensity,
+        mood_tag: moodTag ?? undefined,
+        occurred_at: occurredAt.getTime(),
+        is_private: isPrivate ? 1 : 0,
+      });
+      handleBack();
+    } catch (err) {
+      console.error('[LogEvent] Error saving event:', err);
+      Alert.alert(t('common.error'), 'Failed to save event. Please try again.');
+    }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 64 : 0}
+      >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: c.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleBack}>
             <Text style={[styles.headerBtn, { color: c.textSecondary }]}>{t('common.cancel')}</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]}>{t('events.logEvent')}</Text>
@@ -63,7 +91,7 @@ export default function LogEventModal() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Event Type Picker */}
           <Text style={[styles.label, { color: c.textSecondary }]}>{t('events.chooseType').toUpperCase()}</Text>
           <View style={styles.typeGrid}>
@@ -114,18 +142,17 @@ export default function LogEventModal() {
             style={[styles.input, { backgroundColor: c.surface, borderColor: c.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text style={{ color: c.text, fontSize: 14 }}>{format(occurredAt, 'PPpp')}</Text>
+            <Text style={{ color: c.text, fontSize: 14 }}>
+              {format(occurredAt, 'PPpp', { locale: i18n.language === 'pt' ? ptBR : undefined })}
+            </Text>
             <Text style={{ color: c.primary }}>✏️</Text>
           </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={occurredAt}
-              mode="datetime"
-              display="default"
-              onChange={(_, date) => { setShowDatePicker(false); if (date) setOccurredAt(date); }}
-              maximumDate={new Date()}
-            />
-          )}
+          <DateTimePickerWrapper
+            value={occurredAt}
+            show={showDatePicker}
+            onChange={(date) => setOccurredAt(date)}
+            onClose={() => setShowDatePicker(false)}
+          />
 
           {/* Intensity */}
           <Text style={[styles.label, { color: c.textSecondary }]}>{t('events.intensity').toUpperCase()}</Text>

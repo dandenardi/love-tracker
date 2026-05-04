@@ -9,6 +9,7 @@ import { LockScreen } from '@/components/LockScreen';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
 import { initDatabase } from '@/db/schema';
 import { useContactsStore } from '@/store/useContactsStore';
+import { useSyncStore } from '@/store/useSyncStore';
 import { View, ActivityIndicator } from 'react-native';
 
 function AppContent() {
@@ -23,15 +24,31 @@ function AppContent() {
   } = usePrivacyLock();
   const loadContacts = useContactsStore((s) => s.loadContacts);
 
+  const initSync = useSyncStore((s) => s.init);
+  const sync = useSyncStore((s) => s.sync);
+
   useEffect(() => {
     initDatabase()
+      .then(async () => {
+        await loadContacts();
+        return initSync();
+      })
       .then(() => {
-        loadContacts();
+        // Initial sync
+        sync().catch(console.error);
       })
       .catch((err) => {
-        console.error('DATABASE INIT ERROR:', err);
+        console.error('APP INIT ERROR:', err);
       });
   }, []);
+
+  // Periodic sync every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      sync().catch(console.error);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [sync]);
 
   if (!isReady) {
     return (

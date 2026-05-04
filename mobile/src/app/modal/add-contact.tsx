@@ -23,9 +23,9 @@ export default function AddContactModal() {
   const [avatar, setAvatar] = useState('❤️');
   const [color, setColor] = useState(c.primary);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
-    const contact = addContact({
+    const contact = await addContact({
       name: name.trim(),
       nickname: nickname.trim() || undefined,
       avatar_emoji: avatar,
@@ -33,14 +33,26 @@ export default function AddContactModal() {
       is_partner: 0,
     });
     setActiveContact(contact.id);
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
+  const handleCancel = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.header, { borderBottomColor: c.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleCancel}>
             <Text style={[styles.headerBtn, { color: c.textSecondary }]}>{t('common.cancel')}</Text>
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]}>{t('contacts.addContact')}</Text>

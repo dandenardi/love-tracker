@@ -11,6 +11,7 @@ import {
   SyncPullResponse 
 } from '@/types/shared';
 
+import { storage } from './storage';
 import Constants from 'expo-constants';
 
 // Use apiUrl from app.json/app.config.js extra field
@@ -20,6 +21,11 @@ let accessToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
+};
+
+let sessionExpiredCallback: (() => void) | null = null;
+export const onSessionExpired = (cb: () => void) => {
+  sessionExpiredCallback = cb;
 };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -36,12 +42,52 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   console.log(`[API] Requesting: ${BASE_URL}${path}`);
   
   try {
-    const response = await fetch(`${BASE_URL}${path}`, {
+    let response = await fetch(`${BASE_URL}${path}`, {
       ...options,
       headers,
     });
 
-    const data = await response.json();
+    // Handle token expiration (403 or 401 depending on backend)
+    if (response.status === 403 && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register') {
+      const rfToken = await storage.getItem('refreshToken');
+      if (rfToken) {
+        console.log('[API] Token expired, attempting refresh...');
+        const refreshRes = await fetch(`${BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken: rfToken }),
+        });
+
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          setAccessToken(data.accessToken);
+          headers.set('Authorization', `Bearer ${data.accessToken}`);
+          console.log('[API] Token refreshed, retrying original request...');
+          // Retry original request
+          response = await fetch(`${BASE_URL}${path}`, {
+            ...options,
+            headers,
+          });
+        } else {
+          console.log('[API] Refresh token expired or invalid');
+          sessionExpiredCallback?.();
+          throw new Error('SESSION_EXPIRED');
+        }
+      } else {
+        sessionExpiredCallback?.();
+        throw new Error('SESSION_EXPIRED');
+      }
+    }
+
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr: any) {
+      console.error(`[API] JSON Parse Error for ${path}: ${parseErr.message}`);
+      console.error(`[API] Raw response (first 100 chars): ${text.substring(0, 100)}`);
+      throw new Error(`MALFORMED_JSON: ${parseErr.message}`);
+    }
 
     if (!response.ok) {
       console.log(`[API] Response Error (${response.status}):`, data);
@@ -80,8 +126,9 @@ export const authApi = {
     body: JSON.stringify({ code }),
   }),
   
-  unpair: () => request<{ success: boolean }>('/auth/unpair', {
+  unpair: (partnerId: string) => request<{ success: boolean }>('/auth/unpair', {
     method: 'POST',
+    body: JSON.stringify({ partnerId }),
   }),
 };
 

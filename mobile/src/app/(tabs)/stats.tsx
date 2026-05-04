@@ -8,6 +8,8 @@ import { useEventsStore } from '@/store/useEventsStore';
 import { EVENT_TYPES, EVENT_TYPE_MAP } from '@/constants/eventTypes';
 import { getEventCountByType, getDaysSinceLast } from '@/db/events';
 
+import { isValid } from 'date-fns';
+
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -56,23 +58,39 @@ function DaysSinceRow({ icon, label, days, color }: { icon: string; label: strin
 export default function StatsScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
   const events = useEventsStore((s) => s.events);
 
   const { countByType, totalEvents, daysSince } = useMemo(() => {
     if (!activeContactId) return { countByType: {}, totalEvents: 0, daysSince: {} };
-    const countByType = getEventCountByType(activeContactId);
-    const totalEvents = Object.values(countByType).reduce((a, b) => a + b, 0);
-    const daysSince: Record<string, number | null> = {};
-    for (const et of EVENT_TYPES) {
-      daysSince[et.key] = getDaysSinceLast(activeContactId, et.key);
+    try {
+      const countByType = getEventCountByType(activeContactId);
+      const totalEvents = Object.values(countByType).reduce((a, b) => (a || 0) + (b || 0), 0);
+      const daysSince: Record<string, number | null> = {};
+      for (const et of EVENT_TYPES) {
+        daysSince[et.key] = getDaysSinceLast(activeContactId, et.key);
+      }
+      return { countByType, totalEvents, daysSince };
+    } catch (err) {
+      console.error('[Stats] Error calculating stats:', err);
+      return { countByType: {}, totalEvents: 0, daysSince: {} };
     }
-    return { countByType, totalEvents, daysSince };
   }, [activeContactId, events]);
 
   const maxCount = Math.max(...Object.values(countByType), 1);
+
+  const thisMonthCount = useMemo(() => {
+    if (!events) return 0;
+    const now = new Date();
+    return events.filter((e) => {
+      if (!e.occurred_at) return false;
+      const d = new Date(e.occurred_at);
+      if (!isValid(d)) return false;
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  }, [events]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
@@ -86,11 +104,7 @@ export default function StatsScreen() {
           <StatCard label={t('stats.totalEvents')} value={totalEvents} color={c.primary} />
           <StatCard
             label={t('stats.thisMonth')}
-            value={events.filter((e) => {
-              const d = new Date(e.occurred_at);
-              const now = new Date();
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            }).length}
+            value={thisMonthCount}
             color={c.accent}
           />
         </View>

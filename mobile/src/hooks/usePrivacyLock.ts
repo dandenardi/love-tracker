@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/services/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PIN_KEY = 'appPin';
@@ -18,11 +18,11 @@ export function usePrivacyLock() {
   const timeoutRef = useRef(0);
 
   const isBiometricEnabled = () => biometricRef.current;
-  const getPin = () => SecureStore.getItemAsync(PIN_KEY);
+  const getPin = () => storage.getItem(PIN_KEY);
   const getTimeout = () => timeoutRef.current;
 
   const isProtected = async () => {
-    const pin = await SecureStore.getItemAsync(PIN_KEY);
+    const pin = await storage.getItem(PIN_KEY);
     return biometricRef.current || !!pin;
   };
 
@@ -37,7 +37,7 @@ export function usePrivacyLock() {
   }, []);
 
   const unlockWithPin = useCallback(async (pin: string): Promise<boolean> => {
-    const stored = await SecureStore.getItemAsync(PIN_KEY);
+    const stored = await storage.getItem(PIN_KEY);
     if (stored === pin) {
       setIsLocked(false);
       return true;
@@ -46,11 +46,11 @@ export function usePrivacyLock() {
   }, []);
 
   const setPin = async (pin: string) => {
-    await SecureStore.setItemAsync(PIN_KEY, pin);
+    await storage.setItem(PIN_KEY, pin);
   };
 
   const clearPin = async () => {
-    await SecureStore.deleteItemAsync(PIN_KEY);
+    await storage.deleteItem(PIN_KEY);
   };
 
   const setBiometric = async (enabled: boolean) => {
@@ -78,7 +78,7 @@ export function usePrivacyLock() {
         lastActiveRef.current = Date.now();
       }
       if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
-        const pin = await SecureStore.getItemAsync(PIN_KEY);
+        const pin = await storage.getItem(PIN_KEY);
         const protected_ = biometricRef.current || !!pin;
         if (protected_ && shouldLock()) {
           setIsLocked(true);
@@ -95,7 +95,7 @@ export function usePrivacyLock() {
       const [biometricStr, timeoutStr, pin] = await Promise.all([
         AsyncStorage.getItem(BIOMETRIC_KEY),
         AsyncStorage.getItem(TIMEOUT_KEY),
-        SecureStore.getItemAsync(PIN_KEY),
+        storage.getItem(PIN_KEY),
       ]);
 
       biometricRef.current = biometricStr === 'true';

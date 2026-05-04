@@ -4,13 +4,16 @@ let _db: SQLite.SQLiteDatabase | null = null;
 
 export function getDb(): SQLite.SQLiteDatabase {
   if (!_db) {
-    _db = SQLite.openDatabaseSync('love_tracker.db');
+    throw new Error('Database not initialized. Call initDatabase() first.');
   }
   return _db;
 }
 
 export async function initDatabase(): Promise<void> {
-  const db = getDb();
+  if (!_db) {
+    _db = await SQLite.openDatabaseAsync('love_tracker.db');
+  }
+  const db = _db;
 
   await db.execAsync(`
     PRAGMA journal_mode = WAL;

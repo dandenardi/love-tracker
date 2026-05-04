@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
@@ -13,10 +14,11 @@ import { EVENT_TYPE_MAP } from '@/constants/eventTypes';
 export default function CalendarScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const events = useEventsStore((s) => s.events); // Watch events for refresh
   const getDayEvents = useEventsStore((s) => s.getDayEvents);
   const getMonthEvents = useEventsStore((s) => s.getMonthEvents);
 
@@ -24,13 +26,33 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() });
   const [showDayModal, setShowDayModal] = useState(false);
+  const [monthEvents, setMonthEvents] = useState<LoveEvent[]>([]);
+  const [dayEvents, setDayEvents] = useState<LoveEvent[]>([]);
+
+  // Fetch month events when month or active contact changes
+  useEffect(() => {
+    if (!activeContactId) return;
+    getMonthEvents(activeContactId, currentMonth.year, currentMonth.month)
+      .then(setMonthEvents)
+      .catch(console.error);
+  }, [activeContactId, currentMonth, events, getMonthEvents]);
+
+  // Fetch day events when selected date changes
+  useEffect(() => {
+    if (!activeContactId || !selectedDate) {
+      setDayEvents([]);
+      return;
+    }
+    getDayEvents(activeContactId, new Date(selectedDate + 'T12:00:00').getTime())
+      .then(setDayEvents)
+      .catch(console.error);
+  }, [activeContactId, selectedDate, events, getDayEvents]);
 
   // Build marked dates for current month
   const markedDates = useMemo(() => {
     if (!activeContactId) return {};
-    const events = getMonthEvents(activeContactId, currentMonth.year, currentMonth.month);
     const marks: Record<string, any> = {};
-    for (const ev of events) {
+    for (const ev of monthEvents) {
       const dateStr = format(new Date(ev.occurred_at), 'yyyy-MM-dd');
       const cfg = EVENT_TYPE_MAP[ev.type as keyof typeof EVENT_TYPE_MAP];
       if (!marks[dateStr]) marks[dateStr] = { dots: [], marked: true };
@@ -46,12 +68,8 @@ export default function CalendarScreen() {
       };
     }
     return marks;
-  }, [activeContactId, currentMonth, selectedDate, c.primary]);
+  }, [activeContactId, monthEvents, selectedDate, c.primary]);
 
-  const dayEvents = useMemo(() => {
-    if (!activeContactId || !selectedDate) return [];
-    return getDayEvents(activeContactId, new Date(selectedDate + 'T12:00:00').getTime());
-  }, [activeContactId, selectedDate, getDayEvents]);
 
   const handleDayPress = useCallback((day: any) => {
     setSelectedDate(day.dateString);
@@ -102,9 +120,24 @@ export default function CalendarScreen() {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDayModal(false)}>
           <View style={[styles.modalSheet, { backgroundColor: c.surface, borderColor: c.border }]}>
             <View style={[styles.sheetHandle, { backgroundColor: c.border }]} />
-            <Text style={[styles.sheetTitle, { color: c.text }]}>
-              {selectedDate ? format(new Date(selectedDate + 'T12:00:00'), 'MMMM d, yyyy') : ''}
-            </Text>
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sheetTitle, { color: c.text }]}>
+                {selectedDate ? (() => {
+                  const [y, m, d] = selectedDate.split('-').map(Number);
+                  const dateObj = new Date(y, m - 1, d);
+                  return format(dateObj, 'MMMM d, yyyy', { locale: i18n.language === 'pt' ? ptBR : undefined });
+                })() : ''}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDayModal(false);
+                  router.push({ pathname: '/modal/log-event', params: { date: selectedDate || '', contactId: activeContactId || '' } });
+                }}
+                style={[styles.addEventBtn, { backgroundColor: c.primary + '15' }]}
+              >
+                <Text style={{ color: c.primary, fontWeight: '700', fontSize: 13 }}>＋ {t('calendar.addEvent')}</Text>
+              </TouchableOpacity>
+            </View>
             <ScrollView>
               {dayEvents.length === 0 ? (
                 <Text style={[styles.emptyText, { color: c.textMuted }]}>{t('calendar.noEvents')}</Text>
@@ -158,7 +191,9 @@ const styles = StyleSheet.create({
     padding: 20, minHeight: 300, maxHeight: '70%',
   },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  sheetTitle: { fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  sheetTitle: { fontSize: 18, fontWeight: '700' },
+  addEventBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   emptyText: { textAlign: 'center', paddingVertical: 32 },
   eventRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

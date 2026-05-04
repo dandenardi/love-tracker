@@ -3,25 +3,39 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, parseISO, isValid } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
 import { EVENT_TYPE_MAP } from '@/constants/eventTypes';
 import type { LoveEvent } from '@/db/events';
 
-function groupEventsByDate(events: LoveEvent[]): { key: string; label: string; data: LoveEvent[] }[] {
+function groupEventsByDate(events: LoveEvent[], locale: string): { key: string; label: string; data: LoveEvent[] }[] {
   const groups: Record<string, LoveEvent[]> = {};
+  const currentLocale = locale === 'pt' ? ptBR : undefined;
+
   for (const ev of events) {
-    const dateStr = format(new Date(ev.occurred_at), 'yyyy-MM-dd');
+    if (!ev.occurred_at) continue;
+    const date = new Date(ev.occurred_at);
+    if (!isValid(date)) continue;
+
+    const dateStr = format(date, 'yyyy-MM-dd');
     if (!groups[dateStr]) groups[dateStr] = [];
     groups[dateStr].push(ev);
   }
+
   return Object.entries(groups)
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([dateStr, data]) => {
-      const d = new Date(dateStr + 'T12:00:00');
-      let label = format(d, 'MMMM d, yyyy');
+      // Create date object safely using YYYY, MM, DD to avoid timezone issues with string parsing
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      
+      let label = format(dateObj, 'MMMM d, yyyy', { locale: currentLocale });
+      if (isToday(dateObj)) label = locale === 'pt' ? 'Hoje' : 'Today';
+      else if (isYesterday(dateObj)) label = locale === 'pt' ? 'Ontem' : 'Yesterday';
+
       return { key: dateStr, label, data };
     });
 }
@@ -42,7 +56,7 @@ function IntensityDots({ value, color }: { value: number; color: string }) {
 export default function TimelineScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
@@ -54,7 +68,7 @@ export default function TimelineScreen() {
     if (activeContactId) loadEvents(activeContactId);
   }, [activeContactId]);
 
-  const groups = groupEventsByDate(events);
+  const groups = groupEventsByDate(events, i18n.language);
 
   const handleDelete = (id: string) => {
     Alert.alert(t('events.deleteEvent'), t('events.deleteConfirm'), [

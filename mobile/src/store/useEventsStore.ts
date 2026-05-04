@@ -13,64 +13,83 @@ import {
 interface EventsState {
   events: LoveEvent[];
   // Actions
-  loadEvents: (contactId: string) => void;
-  logEvent: (payload: Omit<LoveEvent, 'id' | 'logged_at' | 'synced'>) => LoveEvent;
-  editEvent: (id: string, patch: Partial<Omit<LoveEvent, 'id'>>) => void;
-  removeEvent: (id: string) => void;
+  loadEvents: (contactId: string) => Promise<void>;
+  logEvent: (payload: Omit<LoveEvent, 'id' | 'logged_at' | 'synced'>) => Promise<LoveEvent>;
+  editEvent: (id: string, patch: Partial<Omit<LoveEvent, 'id'>>) => Promise<void>;
+  removeEvent: (id: string) => Promise<void>;
   /** Flips the is_private flag on a single event. */
-  togglePrivate: (id: string) => void;
+  togglePrivate: (id: string) => Promise<void>;
   // Selectors (call these with a contactId to get filtered lists)
-  getMonthEvents: (contactId: string, year: number, month: number) => LoveEvent[];
-  getDayEvents: (contactId: string, dateMs: number) => LoveEvent[];
-  syncEvent: (event: LoveEvent) => void;
+  getMonthEvents: (contactId: string, year: number, month: number) => Promise<LoveEvent[]>;
+  getDayEvents: (contactId: string, dateMs: number) => Promise<LoveEvent[]>;
+  syncEvent: (event: LoveEvent) => Promise<void>;
+  markContactEventsAsSynced: (contactId: string) => Promise<void>;
 }
 
 export const useEventsStore = create<EventsState>((set, get) => ({
   events: [],
 
-  loadEvents: (contactId) => {
-    const events = getAllEvents(contactId, 200);
+  loadEvents: async (contactId) => {
+    const events = await getAllEvents(contactId, 200);
     set({ events });
   },
 
-  logEvent: (payload) => {
-    const event = createEvent(payload);
+  logEvent: async (payload) => {
+    const event = await createEvent(payload);
     set((s) => ({ events: [event, ...s.events] }));
+    
+    // Trigger background sync
+    const { useSyncStore } = require('./useSyncStore');
+    useSyncStore.getState().sync().catch(console.error);
+    
     return event;
   },
 
-  editEvent: (id, patch) => {
-    updateEvent(id, patch);
+  editEvent: async (id, patch) => {
+    const fullPatch = { ...patch, synced: 0 };
+    await updateEvent(id, fullPatch);
     set((s) => ({
-      events: s.events.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+      events: s.events.map((e) => (e.id === id ? { ...e, ...fullPatch } : e)),
     }));
+
+    // Trigger background sync
+    const { useSyncStore } = require('./useSyncStore');
+    useSyncStore.getState().sync().catch(console.error);
   },
 
-  removeEvent: (id) => {
-    deleteEvent(id);
+  removeEvent: async (id) => {
+    await deleteEvent(id);
     set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
+
+    // Trigger background sync
+    const { useSyncStore } = require('./useSyncStore');
+    useSyncStore.getState().sync().catch(console.error);
   },
 
-  togglePrivate: (id) => {
+  togglePrivate: async (id) => {
     const event = get().events.find((e) => e.id === id);
     if (!event) return;
     const next = event.is_private === 1 ? 0 : 1;
-    updateEvent(id, { is_private: next });
+    await updateEvent(id, { is_private: next, synced: 0 });
     set((s) => ({
-      events: s.events.map((e) => (e.id === id ? { ...e, is_private: next } : e)),
+      events: s.events.map((e) => (e.id === id ? { ...e, is_private: next, synced: 0 } : e)),
     }));
+
+    // Trigger background sync
+    const { useSyncStore } = require('./useSyncStore');
+    useSyncStore.getState().sync().catch(console.error);
   },
 
-  getMonthEvents: (contactId, year, month) => {
-    return getEventsForMonth(contactId, year, month);
+  getMonthEvents: async (contactId, year, month) => {
+    return await getEventsForMonth(contactId, year, month);
   },
 
-  getDayEvents: (contactId, dateMs) => {
-    return getEventsByDate(contactId, dateMs);
+  getDayEvents: async (contactId, dateMs) => {
+    return await getEventsByDate(contactId, dateMs);
   },
 
-  syncEvent: (event) => {
-    upsertEvent(event);
+  syncEvent: async (event) => {
+    await upsertEvent(event);
     set((s) => {
       const exists = s.events.some((e) => e.id === event.id);
       if (exists) {
@@ -82,5 +101,13 @@ export const useEventsStore = create<EventsState>((set, get) => ({
         events: [event, ...s.events].sort((a, b) => b.occurred_at - a.occurred_at),
       };
     });
+  },
+
+  markContactEventsAsSynced: async (contactId) => {
+    const { markEventsAsSynced } = require('@/db/events');
+    await markEventsAsSynced(contactId);
+    set((s) => ({
+      events: s.events.map((e) => (e.contact_id === contactId ? { ...e, synced: 1 } : e)),
+    }));
   },
 }));

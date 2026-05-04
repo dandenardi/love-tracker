@@ -76,7 +76,8 @@
   "calendar": {
     "title": "Calendar",
     "noEvents": "No events on this day",
-    "eventsOnDay": "Events on {{date}}"
+    "eventsOnDay": "Events on {{date}}",
+    "addEvent": "Add Event"
   },
   "timeline": {
     "title": "Timeline",
@@ -119,7 +120,22 @@
     "deleteAllConfirm": "This will permanently delete all events and contacts. Are you sure?",
     "version": "Version",
     "partner": "Partner Sync",
-    "partnerDesc": "Coming soon"
+    "partnerDesc": "Coming soon",
+    "partnershipsActive": "{{count}} active partnerships",
+    "activeSync": "Syncing active",
+    "unpaired": "Unpaired",
+    "unpair": "Unpair",
+    "addNewPartner": "ADD NEW PARTNER",
+    "generateInvite": "Generate Invite Code",
+    "enterPartnerCode": "Or enter partner's code:",
+    "pair": "Pair",
+    "syncAll": "Sync All Partners",
+    "unpairConfirmTitle": "Unpair Partner",
+    "unpairConfirmDesc": "Are you sure you want to stop syncing with {{name}}? History will be preserved locally.",
+    "linkExisting": "Link to existing person",
+    "none": "None (Create new)",
+    "shareHistory": "Share previous history",
+    "shareHistoryDesc": "Partner will see events logged before pairing"
   },
   "privacy": {
     "unlock": "Unlock Love Tracker",

@@ -1,7 +1,7 @@
 import { EVENT_TYPE_MAP, MOOD_TAGS } from "@/constants/eventTypes";
 import { useTheme } from "@/context/ThemeContext";
 import { useEventsStore } from "@/store/useEventsStore";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { DateTimePickerWrapper } from "@/components/DateTimePickerWrapper";
 import { format } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -17,13 +17,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ptBR } from 'date-fns/locale';
 
 export default function EventDetailModal() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
 
@@ -32,6 +34,14 @@ export default function EventDetailModal() {
   const removeEvent = useEventsStore((s) => s.removeEvent);
 
   const event = events.find((e) => e.id === params.id);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/");
+    }
+  };
 
   const [note, setNote] = useState(event?.note || "");
   const [intensity, setIntensity] = useState(event?.intensity || 0);
@@ -57,7 +67,7 @@ export default function EventDetailModal() {
         ]}
       >
         <Text style={{ color: c.text }}>{t("common.noData")}</Text>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleBack}>
           <Text style={{ color: c.primary, marginTop: 16 }}>
             {t("common.back")}
           </Text>
@@ -68,15 +78,16 @@ export default function EventDetailModal() {
 
   const cfg = EVENT_TYPE_MAP[event.type as keyof typeof EVENT_TYPE_MAP];
 
-  const handleSave = () => {
-    editEvent(event.id, {
+  const handleSave = async () => {
+    Keyboard.dismiss();
+    await editEvent(event.id, {
       note: note || undefined,
       intensity,
       mood_tag: moodTag || undefined,
       occurred_at: occurredAt.getTime(),
       is_private: isPrivate ? 1 : 0,
     });
-    router.back();
+    handleBack();
   };
 
   const handleDelete = () => {
@@ -85,9 +96,9 @@ export default function EventDetailModal() {
       {
         text: t("common.delete"),
         style: "destructive",
-        onPress: () => {
-          removeEvent(event.id);
-          router.back();
+        onPress: async () => {
+          await removeEvent(event.id);
+          handleBack();
         },
       },
     ]);
@@ -97,10 +108,11 @@ export default function EventDetailModal() {
     <SafeAreaView style={[styles.container, { backgroundColor: c.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "android" ? 64 : 0}
       >
         <View style={[styles.header, { borderBottomColor: c.border }]}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={handleBack}>
             <Text style={[styles.headerBtn, { color: c.textSecondary }]}>
               {t("common.close")}
             </Text>
@@ -170,18 +182,12 @@ export default function EventDetailModal() {
             </Text>
             <Text style={{ color: c.primary }}>✏️</Text>
           </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={occurredAt}
-              mode="datetime"
-              display="default"
-              onChange={(_, date) => {
-                setShowDatePicker(false);
-                if (date) setOccurredAt(date);
-              }}
-              maximumDate={new Date()}
-            />
-          )}
+          <DateTimePickerWrapper
+            value={occurredAt}
+            show={showDatePicker}
+            onChange={(date) => setOccurredAt(date)}
+            onClose={() => setShowDatePicker(false)}
+          />
 
           {/* Intensity */}
           <Text style={[styles.label, { color: c.textSecondary }]}>
