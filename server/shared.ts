@@ -64,6 +64,13 @@ export interface RefreshResponse {
 
 // ── Pairing ──────────────────────────────────────────────────────────────────
 
+export interface Partner {
+  id: string;
+  alias: string;
+  partnershipId: string;
+  status: 'active' | 'unpaired';
+}
+
 export interface InviteCodeResponse {
   code: string;
   expiresAt: number;
@@ -76,6 +83,7 @@ export interface PairPayload {
 export interface PairResponse {
   partnerId: string;
   partnerAlias: string;
+  partnershipId: string;
 }
 
 // ── Sync ─────────────────────────────────────────────────────────────────────
@@ -83,6 +91,7 @@ export interface PairResponse {
 /** A public event as stored/exchanged on the server. is_private is intentionally absent. */
 export interface ServerEvent {
   clientId: string;
+  partnershipId: string;
   type: EventTypeKey;
   title?: string;
   note?: string;
@@ -97,6 +106,35 @@ export interface SyncPushPayload {
 }
 
 export interface SyncPullResponse {
-  events: ServerEvent[];
+  events: (ServerEvent & { partnerId: string })[];
   deletedIds: string[];
+  partners: Partner[];
+}
+
+// ── Poke ─────────────────────────────────────────────────────────────────────
+
+export interface PokePayload {
+  partnerId: string;
+  message: string;
+  emoji: string;
+}
+
+export interface Poke {
+  id: string;
+  senderId: string;
+  senderAlias: string;
+  message: string;
+  emoji: string;
+  sentAt: number;
+  readAt?: number;
+}
+
+export interface PokesResponse {
+  pokes: Poke[];
+}
+
+// ── Push Token ────────────────────────────────────────────────────────────────
+
+export interface SavePushTokenPayload {
+  token: string;
 }

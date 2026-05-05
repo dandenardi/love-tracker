@@ -4,12 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { format, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
 import { EVENT_TYPE_MAP } from '@/constants/eventTypes';
+import { type LoveEvent } from '@/types/shared';
 
 export default function CalendarScreen() {
   const { theme } = useTheme();
