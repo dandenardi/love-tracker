@@ -25,4 +25,4 @@ If any user is found to be using the platform for illegal activities related to 
 - We will report the incident to the National Center for Missing & Exploited Children (NCMEC) or other relevant international bodies.
 
 ## 5. Contact Information
-For questions regarding these standards or to report a violation, please contact us at: **[dandenardi@example.com]**
+For questions regarding these standards or to report a violation, please contact us at: **[dan.denardi@gmail.com]**
