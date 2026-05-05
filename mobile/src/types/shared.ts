@@ -112,3 +112,31 @@ export interface SyncPullResponse {
   deletedIds: string[];
   partners: Partner[];
 }
+
+// ── Poke ─────────────────────────────────────────────────────────────────────
+
+export interface PokePayload {
+  partnerId: string;
+  message: string;
+  emoji: string;
+}
+
+export interface Poke {
+  id: string;
+  senderId: string;
+  senderAlias: string;
+  message: string;
+  emoji: string;
+  sentAt: number;
+  readAt?: number;
+}
+
+export interface PokesResponse {
+  pokes: Poke[];
+}
+
+// ── Push Token ────────────────────────────────────────────────────────────────
+
+export interface SavePushTokenPayload {
+  token: string;
+}

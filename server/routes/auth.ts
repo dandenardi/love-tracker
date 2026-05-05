@@ -49,4 +49,26 @@ router.post('/pair', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/unpair', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    await AuthService.unpair(req.user!.id, req.body.partnerId);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.post('/push-token', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { token } = req.body;
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'token is required' });
+    }
+    await AuthService.savePushToken(req.user!.id, token);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

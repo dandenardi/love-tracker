@@ -154,5 +154,26 @@
     "chooseTheme": "Choose your style",
     "addFirst": "Add your first person",
     "getStarted": "Get Started"
+  },
+  "poke": {
+    "sectionTitle": "Quick Poke",
+    "sectionDesc": "Customize the 3 shortcut buttons shown in your notification tray",
+    "slotLabel": "Slot {{n}}",
+    "testButton": "Test Poke (uses Slot 1)",
+    "testSent": "Poke sent!",
+    "notifTitle": "Love Tracker — Quick Poke",
+    "notifBody": "Tap to send a message to {{name}}",
+    "messages": {
+      "thinking": "Thinking of you",
+      "love": "I love you",
+      "missing": "Missing you",
+      "amazing": "You're amazing",
+      "goodNight": "Good night, love",
+      "goodMorning": "Good morning!",
+      "hug": "I want a hug",
+      "kiss": "Sending you a kiss",
+      "betterDay": "You make my day better",
+      "proud": "So proud of you"
+    }
   }
 }

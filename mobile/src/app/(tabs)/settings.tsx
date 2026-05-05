@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator, Modal, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,8 @@ import { THEMES, type ThemeKey } from '@/constants/themes';
 import { usePrivacyLock } from '@/hooks/usePrivacyLock';
 import { useSyncStore } from '@/store/useSyncStore';
 import { useContactsStore } from '@/store/useContactsStore';
+import { usePokeStore } from '@/store/usePokeStore';
+import { PokeMessage, schedulePokeNotification, registerPokeCategory } from '@/services/notificationService';
 import { setLanguage } from '@/i18n';
 
 function SectionHeader({ label }: { label: string }) {
@@ -279,6 +281,145 @@ function PartnerSyncSection() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Poke Slots Section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PokeSection() {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const { t } = useTranslation();
+  const sync = useSyncStore();
+  const { slots, allMessages, setSlots, isSending } = usePokeStore();
+
+  const [pickerSlot, setPickerSlot] = useState<0 | 1 | 2 | null>(null);
+  const [localSlots, setLocalSlots] = useState<[PokeMessage, PokeMessage, PokeMessage]>(slots);
+
+  const activePartner = sync.partners.find(p => p.status === 'active');
+  if (!sync.userId || !activePartner) return null;
+
+  const getLabel = (key: string) => t(`poke.messages.${key}`, { defaultValue: key });
+
+  const handleSlotChange = async (slotIdx: 0 | 1 | 2, msg: PokeMessage) => {
+    const updated: [PokeMessage, PokeMessage, PokeMessage] = [...localSlots] as any;
+    updated[slotIdx] = msg;
+    setLocalSlots(updated);
+    setPickerSlot(null);
+    await setSlots(
+      updated,
+      { partnerId: activePartner.id, partnerName: activePartner.alias, slots: updated },
+      t('poke.notifTitle'),
+      t('poke.notifBody', { name: activePartner.alias }),
+      getLabel
+    );
+  };
+
+  const handleTestPoke = async () => {
+    const slot = localSlots[0];
+    try {
+      await usePokeStore.getState().sendPoke(activePartner.id, slot.key, slot.emoji);
+      Alert.alert('✅', t('poke.testSent'));
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  return (
+    <>
+      <SectionHeader label={t('poke.sectionTitle')} />
+      <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+        <View style={{ padding: 16 }}>
+          <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 14 }}>
+            {t('poke.sectionDesc')}
+          </Text>
+
+          {([0, 1, 2] as const).map(idx => (
+            <View key={idx} style={{ marginBottom: 10 }}>
+              <Text style={{ color: c.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
+                {t('poke.slotLabel', { n: idx + 1 })}
+              </Text>
+              <TouchableOpacity
+                id={`poke-slot-${idx}`}
+                onPress={() => setPickerSlot(idx)}
+                style={[
+                  styles.slotBtn,
+                  { backgroundColor: c.surfaceAlt, borderColor: c.border }
+                ]}
+              >
+                <Text style={{ fontSize: 20 }}>{localSlots[idx].emoji}</Text>
+                <Text style={{ color: c.text, fontSize: 13, fontWeight: '600', flex: 1, marginLeft: 10 }}>
+                  {getLabel(localSlots[idx].key)}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12 }}>▾</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            id="poke-test-btn"
+            onPress={handleTestPoke}
+            disabled={isSending}
+            style={[styles.secondaryBtn, { borderColor: c.primary, marginTop: 4 }]}
+          >
+            {isSending
+              ? <ActivityIndicator color={c.primary} />
+              : <Text style={{ color: c.primary, fontWeight: '700', fontSize: 14 }}>👈 {t('poke.testButton')}</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Slot Picker Modal */}
+      <Modal
+        visible={pickerSlot !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPickerSlot(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: c.surface }]}>
+            <Text style={[styles.rowLabel, { color: c.text, marginBottom: 16 }]}>
+              {t('poke.slotLabel', { n: (pickerSlot ?? 0) + 1 })}
+            </Text>
+            <FlatList
+              data={allMessages}
+              keyExtractor={item => item.key}
+              renderItem={({ item }) => {
+                const isSelected = localSlots[pickerSlot ?? 0]?.key === item.key;
+                return (
+                  <TouchableOpacity
+                    id={`poke-msg-${item.key}`}
+                    onPress={() => pickerSlot !== null && handleSlotChange(pickerSlot, item)}
+                    style={[
+                      styles.messageRow,
+                      { borderBottomColor: c.border, backgroundColor: isSelected ? c.primary + '15' : 'transparent' }
+                    ]}
+                  >
+                    <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
+                    <Text style={[
+                      styles.rowLabel,
+                      { flex: 1, marginLeft: 12, color: isSelected ? c.primary : c.text }
+                    ]}>
+                      {getLabel(item.key)}
+                    </Text>
+                    {isSelected && <Text style={{ color: c.primary }}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => setPickerSlot(null)}
+              style={[styles.primaryBtn, { backgroundColor: c.surfaceAlt, marginTop: 16 }]}
+            >
+              <Text style={{ color: c.textMuted, fontWeight: '600' }}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
 function SettingsScreen() {
   const { theme, themeKey, setTheme } = useTheme();
   const c = theme.colors;
@@ -381,6 +522,9 @@ function SettingsScreen() {
         {/* ── Partner Sync ── */}
         <PartnerSyncSection />
 
+        {/* ── Cutucar / Poke ── */}
+        <PokeSection />
+
         <Text style={[styles.version, { color: c.textMuted }]}>Love Tracker v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
@@ -429,6 +573,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   btnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+  slotBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderRadius: 12, padding: 12,
+  },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, maxHeight: '80%',
+  },
+  messageRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
 });
 
 export default SettingsScreen;

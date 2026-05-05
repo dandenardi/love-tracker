@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import syncRoutes from './routes/sync';
+import pokeRoutes from './routes/poke';
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 // Routes
 app.use('/auth', authRoutes);
 app.use('/sync', syncRoutes);
+app.use('/poke', pokeRoutes);
 
 app.get('/health', (req, res) => {
   res.send({ status: 'ok', service: 'Love Tracker API', timestamp: Date.now() });
