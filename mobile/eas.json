@@ -7,13 +7,19 @@
     "development": {
       "node": "22.14.0",
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "API_URL": "http://192.168.0.107:3001"
+      }
     },
     "preview": {
       "node": "22.14.0",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "API_URL": "https://love-tracker-server.onrender.com"
       }
     },
     "production": {
@@ -21,10 +27,17 @@
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "API_URL": "https://love-tracker-server.onrender.com"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

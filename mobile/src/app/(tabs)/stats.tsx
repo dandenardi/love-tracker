@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
-import { EVENT_TYPES, EVENT_TYPE_MAP } from '@/constants/eventTypes';
+import { EVENT_TYPES } from '@/constants/eventTypes';
 import { getEventCountByType, getDaysSinceLast } from '@/db/events';
 
 import { isValid } from 'date-fns';
@@ -58,28 +58,40 @@ function DaysSinceRow({ icon, label, days, color }: { icon: string; label: strin
 export default function StatsScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
   const events = useEventsStore((s) => s.events);
 
-  const { countByType, totalEvents, daysSince } = useMemo(() => {
-    if (!activeContactId) return { countByType: {}, totalEvents: 0, daysSince: {} };
-    try {
-      const countByType = getEventCountByType(activeContactId);
-      const totalEvents = Object.values(countByType).reduce((a, b) => (a || 0) + (b || 0), 0);
-      const daysSince: Record<string, number | null> = {};
-      for (const et of EVENT_TYPES) {
-        daysSince[et.key] = getDaysSinceLast(activeContactId, et.key);
+  const [countByType, setCountByType] = useState<Record<string, number>>({});
+  const [daysSince, setDaysSince] = useState<Record<string, number | null>>({});
+  const [totalEvents, setTotalEvents] = useState(0);
+
+  useEffect(() => {
+    if (!activeContactId) return;
+    
+    async function loadStats() {
+      try {
+        const counts = await getEventCountByType(activeContactId!);
+        const total = Object.values(counts).reduce((a, b) => Number(a || 0) + Number(b || 0), 0);
+        
+        const since: Record<string, number | null> = {};
+        for (const et of EVENT_TYPES) {
+          since[et.key] = await getDaysSinceLast(activeContactId!, et.key as any);
+        }
+
+        setCountByType(counts);
+        setTotalEvents(total);
+        setDaysSince(since);
+      } catch (err) {
+        console.error('[Stats] Error loading stats:', err);
       }
-      return { countByType, totalEvents, daysSince };
-    } catch (err) {
-      console.error('[Stats] Error calculating stats:', err);
-      return { countByType: {}, totalEvents: 0, daysSince: {} };
     }
+
+    loadStats();
   }, [activeContactId, events]);
 
-  const maxCount = Math.max(...Object.values(countByType), 1);
+  const maxCount = Math.max(...Object.values(countByType).map(v => Number(v) || 0), 1);
 
   const thisMonthCount = useMemo(() => {
     if (!events) return 0;

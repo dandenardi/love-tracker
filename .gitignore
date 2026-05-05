@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Google Service Account Keys
+love-tracker-*.json
+*-service-account.json
+pc-*.json
+service-account.json

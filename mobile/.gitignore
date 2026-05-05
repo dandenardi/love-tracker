@@ -41,3 +41,8 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Google Service Account Keys
+*-service-account.json
+pc-*.json
+service-account.json
