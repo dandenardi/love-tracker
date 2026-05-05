@@ -4,11 +4,9 @@ services:
     runtime: node
     plan: free
     region: ohio
-    # In a monorepo, the root is the repo root
-    # We use turbo to build only the server and its dependencies (shared)
-    buildCommand: npm install --include=dev && npx turbo build --filter=@love/server...
-    # The start command uses the script we just added to the server package
-    startCommand: npm run start --workspace=apps/server
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production

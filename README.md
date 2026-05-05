@@ -144,6 +144,7 @@ CREATE TABLE pokes (
 - **Push Notifications**: Configured for partner activity alerts.
 - **Quick Poke System**: Background task + persistent notification buttons + slot customization.
 - **Production Deployment**: Initial builds (v1.0.1) submitted to Google Play Store.
+- **Render Server Stability**: Fixed deployment configuration for flat repo structure.
 - **Web Stability**: Fully async DB layer.
 - **TypeScript Compliance**: Zero errors in both packages.
 
