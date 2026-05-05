@@ -25,6 +25,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.dandenardi.lovetracker",
+      "versionCode": 3,
       "minSdkVersion": 24
     },
     "web": {
