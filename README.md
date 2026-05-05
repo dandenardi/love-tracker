@@ -54,6 +54,7 @@ independent. The root `package.json` provides convenience scripts only.
 ```
 love-tracker/
 ├── mobile/                            # React Native / Expo app
+├── CHILD_SAFETY.md                    # Child safety standards (Play Store)
 ├── PRIVACY_POLICY.md                  # App privacy policy
 ├── README.md                          # Project documentation
 ├── mobile/                            # Mobile application source
