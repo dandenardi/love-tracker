@@ -54,36 +54,22 @@ independent. The root `package.json` provides convenience scripts only.
 ```
 love-tracker/
 ├── mobile/                            # React Native / Expo app
-├── CHILD_SAFETY.md                    # Child safety standards (Play Store)
-├── PRIVACY_POLICY.md                  # App privacy policy
-├── README.md                          # Project documentation
-├── mobile/                            # Mobile application source
-│   ├── src/
+│   ├── app.json                       # Mobile configuration
+│   ├── src/                           # Mobile source code
 │   │   ├── app/                       # Expo Router screens
-│   │   │   ├── (tabs)/
-│   │   │   │   ├── index.tsx          # Home: quick-log grid + recent events
-│   │   │   │   ├── calendar.tsx       # Monthly calendar with event dots
-│   │   │   │   ├── timeline.tsx       # Chronological event list
-│   │   │   │   ├── stats.tsx          # Analytics dashboard
-│   │   │   │   ├── settings.tsx       # Theme, privacy, language, sync, POKES
-│   │   │   │   └── _layout.tsx        # Tab bar setup
-│   │   │   ├── modal/
-│   │   │   │   ├── log-event.tsx      # Create event (full form)
-│   │   │   │   ├── event-detail.tsx   # View / edit / delete event
-│   │   │   │   └── add-contact.tsx    # Create contact
-│   │   │   ├── _layout.tsx            # Root: init, push setup, background tasks
-│   │   │   ├── +html.tsx              # HTML shell for web target
-│   │   │   └── +not-found.tsx
-│   │   ├── db/
-│   │   │   ├── schema.ts              # DB init, table creation, migrations
-│   │   │   └── events.ts              # Event CRUD helpers (now async)
-│   │   ├── store/
-│   │   │   ├── useEventsStore.ts      # Zustand: events state + actions
-│   │   │   ├── useSyncStore.ts        # Zustand: auth, sync, push token registration
-│   │   │   └── usePokeStore.ts        # Zustand: pokes, slot customization
-│   │   ├── services/
-│   │   │   ├── syncApi.ts             # REST API client (auth, sync, pokes)
-│   │   │   └── notificationService.ts # Push registration, categories, background task
+│   │   ├── components/                # Reusable UI components
+│   │   ├── db/                        # SQLite schema and helpers
+│   │   ├── store/                     # Zustand state management
+│   │   └── services/                  # API and Notification services
+├── server/                            # Express backend
+│   ├── index.ts                       # Server entry point
+│   ├── routes/                        # API routes
+│   ├── middleware/                    # Express middleware
+│   ├── db/                            # PostgreSQL connection
+│   └── shared.ts                      # Shared types (copy)
+├── CHILD_SAFETY.md                    # Child safety standards
+├── PRIVACY_POLICY.md                  # App privacy policy
+└── README.md                          # Project documentation
 ```
 
 ---
