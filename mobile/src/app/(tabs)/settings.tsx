@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator, Modal, FlatList,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator, Modal, FlatList, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -547,6 +547,19 @@ function SettingsScreen() {
 
         {/* ── Cutucar / Poke ── */}
         <PokeSection />
+
+        {/* ── Support & Safety ── */}
+        <SectionHeader label={t('settings.support')} />
+        <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+          <SettingRow label={t('settings.reportConcern')} desc={t('settings.reportConcernDesc')} last>
+            <TouchableOpacity 
+              onPress={() => Linking.openURL('mailto:dan.denardi@gmail.com?subject=Safety Concern - Love Tracker')}
+              style={[styles.chip, { borderColor: c.error, backgroundColor: c.error + '15' }]}
+            >
+              <Text style={{ color: c.error, fontSize: 12, fontWeight: '600' }}>{t('settings.report')}</Text>
+            </TouchableOpacity>
+          </SettingRow>
+        </View>
 
         <Text style={[styles.version, { color: c.textMuted }]}>Love Tracker v1.0.0</Text>
       </ScrollView>
