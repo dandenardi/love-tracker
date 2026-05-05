@@ -4,10 +4,13 @@
     "rootDir": "./",
     "module": "CommonJS",
     "target": "ES6",
-    "lib": ["ESNext"],
-    "strict": true,
+    "lib": ["ESNext", "DOM"],
+    "moduleResolution": "node",
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "typeRoots": ["./node_modules/@types"],
+    "types": ["node", "express", "cors", "jsonwebtoken", "pg"],
     "forceConsistentCasingInFileNames": true
   },
   "include": ["**/*.ts"]
