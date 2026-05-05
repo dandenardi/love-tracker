@@ -104,6 +104,23 @@ function PartnerSyncSection() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('settings.deleteAccountConfirmTitle'),
+      t('settings.deleteAccountConfirmDesc'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: async () => {
+          try {
+            await sync.deleteAccount();
+          } catch (err: any) {
+            Alert.alert('Error', err.message);
+          }
+        }}
+      ]
+    );
+  };
+
   if (!sync.userId) {
     return (
       <>
@@ -159,9 +176,15 @@ function PartnerSyncSection() {
       <SectionHeader label={t('settings.partner')} />
       <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
         <SettingRow label={`Hi, ${sync.alias}`} desc={t('settings.partnershipsActive', { count: sync.partners.filter(p => p.status === 'active').length })}>
-          <TouchableOpacity onPress={sync.logout}>
-            <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>Logout</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+            <TouchableOpacity onPress={sync.logout}>
+              <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '600' }}>Logout</Text>
+            </TouchableOpacity>
+            <View style={{ width: 1, height: 12, backgroundColor: c.border }} />
+            <TouchableOpacity onPress={handleDeleteAccount}>
+              <Text style={{ color: c.error, fontSize: 13, fontWeight: '600' }}>{t('settings.deleteAccount')}</Text>
+            </TouchableOpacity>
+          </View>
         </SettingRow>
 
         {sync.partners.length > 0 && (

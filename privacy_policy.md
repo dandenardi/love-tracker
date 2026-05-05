@@ -28,10 +28,16 @@ We may use the following third-party services which collect data according to th
 - **Google Play Services:** For App distribution and core Android functionality.
 - **Expo:** For delivering push notifications.
 
-## 5. Data Deletion
-You can delete all your data at any time:
-1. Uninstalling the app will delete all local data.
-2. Within the App settings, you can choose to "Unpair" or "Delete Account" to remove your shared data from our servers.
+## 5. Data and Account Deletion
+
+### In-App Deletion
+You can delete your account and all associated data directly within the App:
+1. Go to **Settings**.
+2. Under the **Partner Sync** section, tap on **Delete Account**.
+3. Confirm the action. This will permanently remove your user profile, partnership records, and shared events from our servers.
+
+### Web-Based Deletion Request
+If you no longer have the App installed and wish to request the deletion of your account and associated data, please send an email to **[dandenardi@example.com]** with the subject "Account Deletion Request". Please include the email address used for your account. We will process your request within 7 business days.
 
 ## 6. Changes to This Policy
 We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page.

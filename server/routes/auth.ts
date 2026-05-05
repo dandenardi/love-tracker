@@ -71,4 +71,13 @@ router.post('/push-token', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    await AuthService.deleteAccount(req.user!.id);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

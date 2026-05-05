@@ -125,6 +125,10 @@ export class AuthService {
     );
   }
 
+  static async deleteAccount(userId: string): Promise<void> {
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+  }
+
   static async getPartnerships(userId: string): Promise<Partner[]> {
     const result = await pool.query(
       `SELECT p.id as partnership_id, p.status, 

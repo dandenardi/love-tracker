@@ -156,7 +156,25 @@ CREATE TABLE pokes (
 
 ## dev Commands
 `npm run server` (server dir) / `npx expo start` (mobile dir)
-```
+
+---
+
+## Deployment
+
+### Backend (Render)
+To deploy the server to Render:
+1. Create a **Web Service** on Render.
+2. Link your GitHub repository.
+3. Set **Root Directory** to `server`.
+4. Set **Build Command** to `npm install && npm run build`.
+5. Set **Start Command** to `npm start`.
+6. Add your Environment Variables (`DATABASE_URL`, `JWT_SECRET`, etc.).
+
+### Mobile (EAS)
+- **Build:** `eas build --platform android --profile production`
+- **Submit:** `eas submit --platform android` (Select latest build, status will be `draft` for first submission).
+
+---
 
 ## Architecture Principles
 1. **Offline-first.** Local SQLite is source of truth.
