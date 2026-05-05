@@ -141,6 +141,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
   try {
     const Notifications = require('expo-notifications');
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('love-tracker', {
+        name: 'Love Tracker',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#E85D75',
+      });
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -163,7 +173,18 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       }),
     });
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.easConfig?.projectId;
+
+    if (!projectId) {
+      console.warn('[Notifications] No projectId found in Constants. Token might fail in standalone builds.');
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+    
     console.log('[Notifications] Push token:', tokenData.data.substring(0, 40) + '…');
     return tokenData.data;
   } catch (err: any) {
@@ -225,7 +246,10 @@ export async function schedulePokeNotification(
           partnerName: context.partnerName,
           slots: context.slots,
         },
-        ...(Platform.OS === 'android' && { sticky: true }),
+        ...(Platform.OS === 'android' && { 
+          sticky: true,
+          channelId: 'love-tracker',
+        }),
       },
       trigger: null,
     });
