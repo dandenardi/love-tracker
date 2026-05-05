@@ -2,7 +2,7 @@
   "expo": {
     "name": "love-tracker",
     "slug": "love-tracker",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lovetracker",
@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "icon": "./assets/expo.icon",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification", "fetch"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +34,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E85D75",
+          "defaultChannel": "love-tracker"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -61,7 +72,6 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiUrl": "http://192.168.0.107:3001",
       "router": {},
       "eas": {
         "projectId": "ec70026c-46a2-47d9-85a2-550593e1aeba"

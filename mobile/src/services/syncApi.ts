@@ -8,14 +8,21 @@ import {
   InviteCodeResponse, 
   PairResponse, 
   SyncPushPayload, 
-  SyncPullResponse 
+  SyncPullResponse,
+  PokePayload,
+  PokesResponse,
 } from '@/types/shared';
 
 import { storage } from './storage';
 import Constants from 'expo-constants';
 
 // Use apiUrl from app.json/app.config.js extra field
-const BASE_URL = Constants.expoConfig?.extra?.apiUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001'); 
+let BASE_URL = Constants.expoConfig?.extra?.apiUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001');
+
+// Ensure no trailing slash
+if (BASE_URL.endsWith('/')) {
+  BASE_URL = BASE_URL.slice(0, -1);
+}
 
 let accessToken: string | null = null;
 
@@ -145,4 +152,32 @@ export const syncApi = {
   delete: (clientId: string) => request<{ success: boolean }>(`/sync/${clientId}`, {
     method: 'DELETE',
   }),
+};
+
+export const pokeApi = {
+  /** Register or update the device Expo push token on the server */
+  savePushToken: (token: string) =>
+    request<{ status: string }>('/auth/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    }),
+
+  /** Send a poke to a partner */
+  send: (payload: PokePayload) =>
+    request<{ status: string }>('/poke', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** Get pokes received since a timestamp */
+  list: (since: number) =>
+    request<PokesResponse>(`/poke?since=${since}`, {
+      method: 'GET',
+    }),
+
+  /** Mark a single poke as read */
+  markRead: (pokeId: string) =>
+    request<{ status: string }>(`/poke/${pokeId}/read`, {
+      method: 'PATCH',
+    }),
 };

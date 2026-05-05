@@ -154,5 +154,26 @@
     "chooseTheme": "Escolha seu estilo",
     "addFirst": "Adicione sua primeira pessoa",
     "getStarted": "Começar"
+  },
+  "poke": {
+    "sectionTitle": "Cutucar",
+    "sectionDesc": "Personalize os 3 botões de atalho mostrados na sua bandeja de notificações",
+    "slotLabel": "Slot {{n}}",
+    "testButton": "Testar Cutucar (usa Slot 1)",
+    "testSent": "Cutucada enviada!",
+    "notifTitle": "Love Tracker — Cutucar",
+    "notifBody": "Toque para enviar uma mensagem para {{name}}",
+    "messages": {
+      "thinking": "Pensando em você",
+      "love": "Te amo",
+      "missing": "Com saudade",
+      "amazing": "Você é incrível",
+      "goodNight": "Boa noite, amor",
+      "goodMorning": "Bom dia!",
+      "hug": "Quero um abraço",
+      "kiss": "Beijo pra você",
+      "betterDay": "Você faz meu dia melhor",
+      "proud": "Tenho orgulho de você"
+    }
   }
 }

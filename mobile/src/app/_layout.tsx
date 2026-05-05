@@ -1,5 +1,14 @@
 import 'react-native-get-random-values';
 import '@/i18n';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMPORTANT: definePokeBackgroundTask() must be at module scope (outside any
+// React component) so the TaskManager task is registered before the JS
+// runtime finishes initialising.
+// ─────────────────────────────────────────────────────────────────────────────
+import { definePokeBackgroundTask } from '@/services/notificationService';
+definePokeBackgroundTask();
+
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,10 +19,18 @@ import { usePrivacyLock } from '@/hooks/usePrivacyLock';
 import { initDatabase } from '@/db/schema';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useSyncStore } from '@/store/useSyncStore';
+import { usePokeStore } from '@/store/usePokeStore';
 import { View, ActivityIndicator } from 'react-native';
+import {
+  registerForPushNotificationsAsync,
+  registerPokeCategory,
+  schedulePokeNotification,
+} from '@/services/notificationService';
+import { useTranslation } from 'react-i18next';
 
 function AppContent() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const c = theme.colors;
   const {
     isLocked,
@@ -26,6 +43,10 @@ function AppContent() {
 
   const initSync = useSyncStore((s) => s.init);
   const sync = useSyncStore((s) => s.sync);
+  const userId = useSyncStore((s) => s.userId);
+  const partners = useSyncStore((s) => s.partners);
+  const registerPushToken = useSyncStore((s) => s.registerPushToken);
+  const slots = usePokeStore((s) => s.slots);
 
   useEffect(() => {
     initDatabase()
@@ -41,6 +62,37 @@ function AppContent() {
         console.error('APP INIT ERROR:', err);
       });
   }, []);
+
+  // Register push token and set up persistent poke notification
+  useEffect(() => {
+    if (!userId) return;
+
+    (async () => {
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          await registerPushToken(token);
+        }
+
+        const activePartner = partners.find(p => p.status === 'active');
+        if (activePartner) {
+          const getLabel = (key: string) => t(`poke.messages.${key}`, { defaultValue: key });
+          await registerPokeCategory(slots, getLabel);
+          await schedulePokeNotification(
+            {
+              partnerId: activePartner.id,
+              partnerName: activePartner.alias,
+              slots,
+            },
+            t('poke.notifTitle'),
+            t('poke.notifBody', { name: activePartner.alias })
+          );
+        }
+      } catch (err: any) {
+        console.error('[_layout] Notification setup error:', err.message);
+      }
+    })();
+  }, [userId, partners.length]);
 
   // Periodic sync every 60 seconds
   useEffect(() => {

@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, syncApi, setAccessToken, onSessionExpired } from '@/services/syncApi';
+import { authApi, syncApi, setAccessToken, onSessionExpired, pokeApi } from '@/services/syncApi';
 import { storage } from '@/services/storage';
 import { Partner, type ServerEvent } from '@/types/shared';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
+import { usePokeStore } from './usePokeStore';
 
 const STORAGE_KEY = '@love-tracker/sync';
 
@@ -46,6 +47,7 @@ interface SyncState {
   lastSyncedAt: number;
   isSyncing: boolean;
   error: string | null;
+  pushToken: string | null;
 
   init: () => Promise<void>;
   register: (email: string, password: string, alias: string) => Promise<void>;
@@ -55,6 +57,8 @@ interface SyncState {
   pairWithCode: (code: string, contactId?: string, includeHistory?: boolean) => Promise<void>;
   unpair: (partnerId: string) => Promise<void>;
   sync: () => Promise<void>;
+  /** Save the Expo push token to state and register it on the server */
+  registerPushToken: (token: string) => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -64,6 +68,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   lastSyncedAt: 0,
   isSyncing: false,
   error: null,
+  pushToken: null,
 
   init: async () => {
     try {
@@ -129,6 +134,16 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   generateInvite: async () => {
     const res = await authApi.invite();
     return res.code;
+  },
+
+  registerPushToken: async (token: string) => {
+    set({ pushToken: token });
+    try {
+      await pokeApi.savePushToken(token);
+      console.log('[SyncStore] Push token registered on server');
+    } catch (err: any) {
+      console.error('[SyncStore] Failed to register push token:', err.message);
+    }
   },
 
   pairWithCode: async (code, contactId, includeHistory = true) => {
@@ -266,7 +281,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
           
           if (!localContact) {
             const partnerInfo = res.partners.find(p => p.id === se.partnerId);
-            const newContact = contactsStore.addContact({
+            const newContact = await contactsStore.addContact({
               name: partnerInfo?.alias || 'Partner',
               avatar_emoji: '❤️',
               color: '#FF6B6B',
@@ -303,6 +318,12 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       const now = Date.now();
       await AsyncStorage.setItem(`${STORAGE_KEY}/lastSyncedAt`, String(now));
       set({ lastSyncedAt: now, isSyncing: false });
+
+      // 6. Pull pokes received since last check
+      const pokeStore = usePokeStore.getState();
+      pokeStore.loadPokes(pokeStore.lastPokeCheckedAt).catch(e =>
+        console.warn('[SyncStore] Poke poll failed:', e.message)
+      );
     } catch (err: any) {
       console.error('Sync failed:', err);
       set({ error: err.message, isSyncing: false });

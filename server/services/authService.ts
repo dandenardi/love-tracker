@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/pool';
-import { RegisterPayload, LoginPayload, AuthResponse, RefreshResponse } from '../shared';
+import { RegisterPayload, LoginPayload, AuthResponse, RefreshResponse, PairResponse, Partner } from '../shared';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const ACCESS_TOKEN_EXPIRE = process.env.ACCESS_TOKEN_EXPIRE || '15m';
@@ -67,7 +67,7 @@ export class AuthService {
     return { code, expiresAt };
   }
 
-  static async pair(userId: string, code: string): Promise<{ partnerId: string; partnerAlias: string }> {
+  static async pair(userId: string, code: string): Promise<PairResponse> {
     const result = await pool.query(
       'SELECT id, alias, invite_expires FROM users WHERE invite_code = $1',
       [code.toUpperCase()]
@@ -82,18 +82,65 @@ export class AuthService {
       throw new Error('You cannot pair with yourself');
     }
 
-    // Bi-directional link
-    await pool.query('BEGIN');
-    try {
-      await pool.query('UPDATE users SET partner_id = $1, invite_code = NULL, invite_expires = NULL WHERE id = $2', [partner.id, userId]);
-      await pool.query('UPDATE users SET partner_id = $1 WHERE id = $2', [userId, partner.id]);
-      await pool.query('COMMIT');
-    } catch (e) {
-      await pool.query('ROLLBACK');
-      throw e;
-    }
+    const u1 = userId < partner.id ? userId : partner.id;
+    const u2 = userId < partner.id ? partner.id : userId;
+    const now = Date.now();
 
-    return { partnerId: partner.id, partnerAlias: partner.alias };
+    // Create partnership record
+    const pResult = await pool.query(
+      `INSERT INTO partnerships (user_id_1, user_id_2, status, created_at)
+       VALUES ($1, $2, 'active', $3)
+       ON CONFLICT (user_id_1, user_id_2) DO UPDATE SET status = 'active', unpaired_at = NULL
+       RETURNING id`,
+      [u1, u2, now]
+    );
+
+    const partnershipId = pResult.rows[0].id;
+
+    // Clear invite code
+    await pool.query('UPDATE users SET invite_code = NULL, invite_expires = NULL WHERE id = $1', [partner.id]);
+
+    return { 
+      partnerId: partner.id, 
+      partnerAlias: partner.alias,
+      partnershipId 
+    };
+  }
+
+  static async savePushToken(userId: string, token: string): Promise<void> {
+    await pool.query(
+      'UPDATE users SET push_token = $1 WHERE id = $2',
+      [token, userId]
+    );
+    console.log('[AuthService] Push token saved for user:', userId.substring(0, 8));
+  }
+
+  static async unpair(userId: string, partnerId: string): Promise<void> {
+    const u1 = userId < partnerId ? userId : partnerId;
+    const u2 = userId < partnerId ? partnerId : userId;
+
+    await pool.query(
+      "UPDATE partnerships SET status = 'unpaired', unpaired_at = $1 WHERE user_id_1 = $2 AND user_id_2 = $3",
+      [Date.now(), u1, u2]
+    );
+  }
+
+  static async getPartnerships(userId: string): Promise<Partner[]> {
+    const result = await pool.query(
+      `SELECT p.id as partnership_id, p.status, 
+              u.id as partner_id, u.alias as partner_alias
+       FROM partnerships p
+       JOIN users u ON (u.id = p.user_id_1 OR u.id = p.user_id_2) AND u.id != $1
+       WHERE p.user_id_1 = $1 OR p.user_id_2 = $1`,
+      [userId]
+    );
+
+    return result.rows.map(row => ({
+      id: row.partner_id,
+      alias: row.partner_alias,
+      partnershipId: row.partnership_id,
+      status: row.status as 'active' | 'unpaired'
+    }));
   }
 
   private static async generateAuthResponse(userId: string, email: string, alias: string): Promise<AuthResponse> {
