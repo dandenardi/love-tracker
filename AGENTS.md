@@ -41,8 +41,8 @@ The README must always reflect the *current* state of the project, not a past sn
   and confirm it with the user before implementing.
 - **Check implementation status first.** If the README says a feature is "In Progress"
   or "Not Yet Started", do not assume how it should be built — ask or investigate.
-- **Do not duplicate types.** Shared types belong in `packages/shared/index.ts`.
-  Never redefine `LoveEvent`, `Contact`, or `EventTypeKey` inside `apps/`.
+- **Do not duplicate types.** Shared types should be kept in sync between `mobile/` and `server/` (e.g., `shared.ts`).
+  Never redefine `LoveEvent`, `Contact`, or `EventTypeKey` with different structures.
 
 ---
 
@@ -60,16 +60,6 @@ The README must always reflect the *current* state of the project, not a past sn
 
 ---
 
-## TypeScript / Monorepo Rules
-
-- `packages/shared` is a **composite TypeScript project** (project references).
-  After modifying it, run `npx tsc --build` inside `packages/shared/`.
-- Consumers import `@love/shared` — never import from a relative path crossing
-  package boundaries (e.g., `../../packages/shared/index.ts`).
-- Each app's `tsconfig.json` must declare a `"references"` entry pointing to
-  `packages/shared` if it imports from `@love/shared`.
-
----
 
 ## Verification Checklist (before declaring work done)
 
@@ -78,4 +68,4 @@ The README must always reflect the *current* state of the project, not a past sn
 - [ ] New UI strings added to both `en.json` and `pt.json`
 - [ ] No raw hex colors introduced in screens or components
 - [ ] DB migrations are wrapped in try/catch (idempotent)
-- [ ] If `packages/shared` was changed, `npx tsc --build` was run inside it
+- [ ] If shared types were changed, ensure both `mobile/` and `server/` are updated
