@@ -137,6 +137,10 @@ export const authApi = {
     method: 'POST',
     body: JSON.stringify({ partnerId }),
   }),
+  
+  deleteAccount: () => request<{ success: boolean }>('/auth/account', {
+    method: 'DELETE',
+  }),
 };
 
 export const syncApi = {

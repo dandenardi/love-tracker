@@ -135,7 +135,10 @@
     "linkExisting": "Link to existing person",
     "none": "None (Create new)",
     "shareHistory": "Share previous history",
-    "shareHistoryDesc": "Partner will see events logged before pairing"
+    "shareHistoryDesc": "Partner will see events logged before pairing",
+    "deleteAccount": "Delete Account",
+    "deleteAccountConfirmTitle": "Delete Account Permanently?",
+    "deleteAccountConfirmDesc": "This will permanently delete your account from our servers and stop all syncing. Your local data will be preserved unless you uninstall the app. This action cannot be undone."
   },
   "privacy": {
     "unlock": "Unlock Love Tracker",

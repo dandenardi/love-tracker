@@ -59,6 +59,7 @@ interface SyncState {
   sync: () => Promise<void>;
   /** Save the Expo push token to state and register it on the server */
   registerPushToken: (token: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -129,6 +130,18 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       AsyncStorage.removeItem(`${STORAGE_KEY}/lastSyncedAt`),
     ]);
     set({ userId: null, alias: null, partners: [], lastSyncedAt: 0 });
+  },
+
+  deleteAccount: async () => {
+    set({ isSyncing: true });
+    try {
+      await authApi.deleteAccount();
+      await get().logout();
+      set({ isSyncing: false });
+    } catch (err: any) {
+      set({ error: err.message, isSyncing: false });
+      throw err;
+    }
   },
 
   generateInvite: async () => {
