@@ -138,7 +138,11 @@
     "shareHistoryDesc": "O parceiro verá os eventos registrados antes do pareamento",
     "deleteAccount": "Excluir Conta",
     "deleteAccountConfirmTitle": "Excluir Conta Permanentemente?",
-    "deleteAccountConfirmDesc": "Isso excluirá permanentemente sua conta de nossos servidores e interromperá toda a sincronização. Seus dados locais serão preservados a menos que você desinstale o app. Esta ação não pode ser desfeita."
+    "deleteAccountConfirmDesc": "Isso excluirá permanentemente sua conta de nossos servidores e interromperá toda a sincronização. Seus dados locais serão preservados a menos que você desinstale o app. Esta ação não pode ser desfeita.",
+    "support": "Suporte e Segurança",
+    "reportConcern": "Denunciar Problema de Segurança",
+    "reportConcernDesc": "Denunciar abuso ou questões de segurança infantil",
+    "report": "Denunciar"
   },
   "privacy": {
     "unlock": "Desbloquear Love Tracker",

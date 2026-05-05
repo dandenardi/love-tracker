@@ -31,6 +31,11 @@ If any user is found to be using the platform for illegal activities related to 
 - All associated data on our servers will be deleted (after coordination with authorities if required).
 - We will report the incident to the National Center for Missing & Exploited Children (NCMEC) or other relevant international bodies.
 
-## 5. Contact Information
+## 5. In-App Reporting Tools
+To satisfy safety requirements, Love Tracker provides a direct way for users to report safety concerns:
+- **Report Button**: Users can navigate to **Settings > Support & Safety** and tap **Report a Safety Concern**. This allows users to instantly report any suspected illegal activity or child safety issues directly to our team.
+- **Immediate Action**: All reports received via the in-app tool are prioritized for review.
+
+## 6. Contact Information
 
 For questions regarding these standards or to report a violation, please contact us at: **[dan.denardi@gmail.com]**
