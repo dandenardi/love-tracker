@@ -163,6 +163,8 @@
     "getStarted": "Começar"
   },
   "poke": {
+    "sendTitle": "Enviar um Poke",
+    "sentSuccess": "Enviou {{emoji}} para {{name}}!",
     "sectionTitle": "Cutucar",
     "sectionDesc": "Personalize os 3 botões de atalho mostrados na sua bandeja de notificações",
     "slotLabel": "Slot {{n}}",
@@ -182,5 +184,16 @@
       "betterDay": "Você faz meu dia melhor",
       "proud": "Tenho orgulho de você"
     }
+  },
+  "notifications": {
+    "title": "Notificações",
+    "noNotifications": "Nenhuma notificação ainda",
+    "clearAll": "Limpar Tudo",
+    "markRead": "Marcar como lida",
+    "pokeReceived": "{{name}} te enviou um poke: {{emoji}}",
+    "eventAdded": "{{name}} registrou um novo {{type}}",
+    "today": "Hoje",
+    "yesterday": "Ontem",
+    "earlier": "Anterior"
   }
 }

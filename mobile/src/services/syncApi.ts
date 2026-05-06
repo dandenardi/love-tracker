@@ -54,8 +54,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       headers,
     });
 
-    // Handle token expiration (403 or 401 depending on backend)
-    if (response.status === 403 && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register') {
+    // Handle token expiration or missing token (401 or 403)
+    if ((response.status === 401 || response.status === 403) && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register') {
       const rfToken = await storage.getItem('refreshToken');
       if (rfToken) {
         console.log('[API] Token expired, attempting refresh...');

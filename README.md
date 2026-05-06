@@ -56,10 +56,10 @@ love-tracker/
 ├── mobile/                            # React Native / Expo app
 │   ├── app.json                       # Mobile configuration
 │   ├── src/                           # Mobile source code
-│   │   ├── app/                       # Expo Router screens
+│   │   ├── app/                       # Expo Router screens (tabs, modals, notifications)
 │   │   ├── components/                # Reusable UI components
 │   │   ├── db/                        # SQLite schema and helpers
-│   │   ├── store/                     # Zustand state management
+│   │   ├── store/                     # State management (events, contacts, pokes, activities)
 │   │   └── services/                  # API and Notification services
 ├── server/                            # Express backend
 │   ├── index.ts                       # Server entry point
@@ -116,6 +116,7 @@ CREATE TABLE pokes (
 - **Push Notifications**: Receive instant alerts when your partner logs a new event (Shared events only).
 - **Privacy Lock**: 4-digit PIN or Biometrics (FaceID/Fingerprint) with configurable timeout.
 - **Partner Sync**: Real-time synchronization of shared events across devices.
+- **Notification Center**: A unified hub to track pokes, partner activities, and system alerts with unread badges.
 - **Offline-first**: Everything works without internet; sync happens automatically when back online.
 
 ---
@@ -130,10 +131,12 @@ CREATE TABLE pokes (
 - Partner pairing via invite codes
 - **Push Notifications**: Configured for partner activity alerts (Fixed for standalone builds).
 - **Quick Poke System**: Background task + persistent notification buttons + slot customization.
+- **Notification Center**: Unified activity hub for pokes and partner events with badge count.
 - **Production Deployment**: Initial builds (v1.0.1, versionCode 3) submitted to Google Play Store.
 - **Render Server Stability**: Fixed deployment configuration for flat repo structure.
 - **Web Stability**: Fully async DB layer.
 - **TypeScript Compliance**: Zero errors in both packages.
+- **Testing Infrastructure**: Jest + RNTL configured; Maestro smoke test added; Development Client setup.
 
 ### Not Yet Started
 - Export / import data
@@ -142,8 +145,26 @@ CREATE TABLE pokes (
 
 ---
 
-## dev Commands
-`npm run server` (server dir) / `npx expo start` (mobile dir)
+## Dev Commands
+
+### General
+- `npm run server` (server dir)
+
+### Mobile (`mobile/`)
+- `npm run dev` - Starts the Metro bundler for **Development Client**.
+- `npx expo start` - Starts Metro for **Expo Go** (limited).
+- `npm test` - Runs Jest unit/component tests.
+- `npm run build:dev` - Builds the local Development Client APK.
+- `npm run build:preview` - Builds a Preview APK via EAS.
+
+---
+
+## Testing Strategy
+
+1. **Unit/Component (Jest)**: Run `npm test`. Focus on stores and reusable components.
+2. **Integration (Dev Client)**: Use `npm run dev`. Tests native modules like notifications and biometrics.
+3. **E2E (Maestro)**: Run `maestro test .maestro/smoke-test.yaml`. (Requires Maestro CLI installed).
+4. **Internal Distribution**: Use `build:preview` to share APKs with testers.
 
 ---
 

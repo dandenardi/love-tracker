@@ -1,0 +1,10 @@
+appId: com.dandenardi.lovetracker
+---
+- launchApp
+- assertVisible: "Love Tracker"
+- tapOn: "Settings"
+- assertVisible: "Theme"
+- tapOn: "Theme"
+- tapOn: "Dark"
+- assertVisible: "Dark"
+- tapOn: "back-button" # Assuming there's a back button or navigation works this way

@@ -22,6 +22,6 @@ app.get('/health', (req, res) => {
   res.send({ status: 'ok', service: 'Love Tracker API', timestamp: Date.now() });
 });
 
-app.listen(port, () => {
-  console.log(`[server]: Love Tracker Backend is running at http://localhost:${port}`);
+app.listen(Number(port), '0.0.0.0', () => {
+  console.log(`[server]: Love Tracker Backend is running at http://0.0.0.0:${port}`);
 });

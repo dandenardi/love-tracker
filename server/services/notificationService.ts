@@ -43,6 +43,8 @@ export async function sendExpoPushNotification(
     data,
     sound: 'default',
     priority: 'high',
+    // @ts-ignore - channelId is supported by Expo but might not be in the local interface
+    channelId: 'love-tracker',
   };
 
   try {

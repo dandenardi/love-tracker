@@ -1,21 +1,23 @@
-import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { pokeApi } from '@/services/syncApi';
 import {
-  PokeMessage,
   DEFAULT_SLOTS,
   POKE_MESSAGES,
+  PokeMessage,
+  PokeNotificationContext,
   registerPokeCategory,
   schedulePokeNotification,
-  PokeNotificationContext,
-} from '@/services/notificationService';
-import { Poke } from '@/types/shared';
+} from "@/services/notificationService";
+import { pokeApi } from "@/services/syncApi";
+import { Poke } from "@/types/shared";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { create } from "zustand";
+import { useActivityStore } from "./useActivityStore";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AsyncStorage persistence for slot preferences
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SLOTS_KEY = '@love-tracker/poke_slots';
+const SLOTS_KEY = "@love-tracker/poke_slots";
 
 function loadSlotsFromStorage(): [PokeMessage, PokeMessage, PokeMessage] {
   // Synchronous load not possible with AsyncStorage — return defaults.
@@ -23,7 +25,9 @@ function loadSlotsFromStorage(): [PokeMessage, PokeMessage, PokeMessage] {
   return DEFAULT_SLOTS;
 }
 
-async function loadSlotsAsync(): Promise<[PokeMessage, PokeMessage, PokeMessage]> {
+async function loadSlotsAsync(): Promise<
+  [PokeMessage, PokeMessage, PokeMessage]
+> {
   try {
     const raw = await AsyncStorage.getItem(SLOTS_KEY);
     if (raw) {
@@ -38,7 +42,9 @@ async function loadSlotsAsync(): Promise<[PokeMessage, PokeMessage, PokeMessage]
   return DEFAULT_SLOTS;
 }
 
-async function saveSlotsToStorage(slots: [PokeMessage, PokeMessage, PokeMessage]): Promise<void> {
+async function saveSlotsToStorage(
+  slots: [PokeMessage, PokeMessage, PokeMessage],
+): Promise<void> {
   await AsyncStorage.setItem(SLOTS_KEY, JSON.stringify(slots));
 }
 
@@ -67,7 +73,11 @@ export interface PokeState {
    * Send a poke to a partner.
    * `messageKey` is the i18n key (e.g. 'thinking'), resolved to a label by the caller.
    */
-  sendPoke: (partnerId: string, messageKey: string, emoji: string) => Promise<void>;
+  sendPoke: (
+    partnerId: string,
+    messageKey: string,
+    emoji: string,
+  ) => Promise<void>;
 
   /**
    * Update the 3 active slots. Persists to AsyncStorage and refreshes the
@@ -78,7 +88,7 @@ export interface PokeState {
     context: PokeNotificationContext,
     titleText: string,
     bodyText: string,
-    getLabel: (key: string) => string
+    getLabel: (key: string) => string,
   ) => Promise<void>;
 
   /** Mark a poke as read on the server */
@@ -88,7 +98,7 @@ export interface PokeState {
 export const usePokeStore = create<PokeState>((set, get) => ({
   receivedPokes: [],
   lastPokeCheckedAt: 0,
-  slots: DEFAULT_SLOTS,  // will be hydrated by loadSlotsAsync in init
+  slots: DEFAULT_SLOTS, // will be hydrated by loadSlotsAsync in init
   allMessages: POKE_MESSAGES,
   isSending: false,
   lastError: null,
@@ -103,17 +113,47 @@ export const usePokeStore = create<PokeState>((set, get) => ({
 
     try {
       const res = await pokeApi.list(since);
-      set(state => {
+      set((state) => {
         // Merge new pokes with existing ones (avoid duplicates by id)
-        const existingIds = new Set(state.receivedPokes.map(p => p.id));
-        const newPokes = res.pokes.filter(p => !existingIds.has(p.id));
+        const existingIds = new Set(state.receivedPokes.map((p) => p.id));
+        const newPokes = res.pokes.filter((p) => !existingIds.has(p.id));
+
+        // If we found new pokes via polling, trigger a local notification for the most recent one
+        if (newPokes.length > 0) {
+          const latest = newPokes[0];
+          const msg = POKE_MESSAGES.find((m) => m.key === latest.message);
+
+          Notifications.scheduleNotificationAsync({
+            content: {
+              title: `❤️ ${latest.senderAlias}`,
+              body: msg ? `${msg.emoji} ${latest.message}` : latest.message,
+              data: { pokeId: latest.id },
+              sound: "default",
+            },
+            trigger: null,
+          }).catch(console.error);
+
+          // Log to activity store
+          useActivityStore
+            .getState()
+            .addActivity({
+              id: latest.id,
+              type: "poke",
+              title: latest.senderAlias,
+              body: msg ? `${msg.emoji} ${latest.message}` : latest.message,
+              timestamp: latest.sent_at,
+              data: { pokeId: latest.id },
+            })
+            .catch(console.error);
+        }
+
         return {
           receivedPokes: [...newPokes, ...state.receivedPokes],
           lastPokeCheckedAt: Date.now(),
         };
       });
     } catch (err: any) {
-      console.error('[PokeStore] Failed to load pokes:', err.message);
+      console.error("[PokeStore] Failed to load pokes:", err.message);
     }
   },
 
@@ -135,22 +175,29 @@ export const usePokeStore = create<PokeState>((set, get) => ({
     // Re-register the notification category and refresh the persistent notification
     try {
       await registerPokeCategory(slots, getLabel);
-      await schedulePokeNotification({ ...context, slots }, titleText, bodyText);
+      await schedulePokeNotification(
+        { ...context, slots },
+        titleText,
+        bodyText,
+      );
     } catch (err: any) {
-      console.error('[PokeStore] Failed to refresh poke notification:', err.message);
+      console.error(
+        "[PokeStore] Failed to refresh poke notification:",
+        err.message,
+      );
     }
   },
 
   markRead: async (pokeId: string) => {
     try {
       await pokeApi.markRead(pokeId);
-      set(state => ({
-        receivedPokes: state.receivedPokes.map(p =>
-          p.id === pokeId ? { ...p, readAt: Date.now() } : p
+      set((state) => ({
+        receivedPokes: state.receivedPokes.map((p) =>
+          p.id === pokeId ? { ...p, readAt: Date.now() } : p,
         ),
       }));
     } catch (err: any) {
-      console.error('[PokeStore] Failed to mark poke as read:', err.message);
+      console.error("[PokeStore] Failed to mark poke as read:", err.message);
     }
   },
 }));

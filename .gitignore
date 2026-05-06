@@ -41,6 +41,7 @@ yarn-error.*
 /android
 
 # Google Service Account Keys
+google-services.json
 love-tracker-*.json
 *-service-account.json
 pc-*.json

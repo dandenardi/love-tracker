@@ -17,6 +17,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
+import { useSyncStore } from '@/store/useSyncStore';
+import { usePokeStore } from '@/store/usePokeStore';
+import { useActivityStore } from '@/store/useActivityStore';
 import { EVENT_TYPES, EVENT_TYPE_MAP } from '@/constants/eventTypes';
 import { format } from 'date-fns';
 
@@ -121,6 +124,18 @@ export default function HomeScreen() {
   const loadEvents = useEventsStore((s) => s.loadEvents);
   const logEvent = useEventsStore((s) => s.logEvent);
 
+  const partners = useSyncStore((s) => s.partners);
+  const activePartner = partners.find(p => p.status === 'active');
+  const pokeSlots = usePokeStore((s) => s.slots);
+  const sendPoke = usePokeStore((s) => s.sendPoke);
+  const isSendingPoke = usePokeStore((s) => s.isSending);
+  const activities = useActivityStore((s) => s.activities);
+  const unreadCount = activities.filter(a => !a.readAt).length;
+
+  useEffect(() => {
+    useActivityStore.getState().loadActivities();
+  }, []);
+
   useEffect(() => {
     if (activeContactId) loadEvents(activeContactId);
   }, [activeContactId]);
@@ -143,6 +158,21 @@ export default function HomeScreen() {
     [activeContactId, logEvent, t]
   );
 
+  const handleSendPoke = useCallback(async (slot: any) => {
+    if (!activePartner) return;
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await sendPoke(activePartner.id, slot.key, slot.emoji);
+      if (Platform.OS === 'web') {
+        alert(t('poke.sentSuccess', { name: activePartner.alias, emoji: slot.emoji }));
+      }
+    } catch (err: any) {
+      if (Platform.OS !== 'web') {
+        Alert.alert('Error', err.message);
+      }
+    }
+  }, [activePartner, sendPoke, t]);
+
   const handleLongPress = useCallback(
     (typeKey: string) => {
       router.push({ pathname: '/modal/log-event', params: { type: typeKey, contactId: activeContactId ?? '' } });
@@ -158,7 +188,17 @@ export default function HomeScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.appTitle, { color: c.text }]}>💞 Love Tracker</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Text style={[styles.appTitle, { color: c.text }]}>💞 Love Tracker</Text>
+            <TouchableOpacity onPress={() => router.push('/modal/notifications')} style={styles.notifBtn}>
+              <Text style={{ fontSize: 22 }}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: c.error }]}>
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity onPress={() => router.push('/modal/add-contact')}>
             <View style={[styles.addBtn, { backgroundColor: c.surface, borderColor: c.border }]}>
               <Text style={{ fontSize: 20, color: c.primary }}>＋</Text>
@@ -195,6 +235,33 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
+            {/* Poke Section */}
+            {activePartner && (
+              <View style={[styles.section, { marginTop: 10 }]}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: c.textSecondary }]}>{t('poke.sendTitle').toUpperCase()}</Text>
+                  <Text style={[styles.partnerName, { color: c.primary }]}>
+                    {activePartner.alias}
+                  </Text>
+                </View>
+                <View style={styles.pokeGrid}>
+                  {pokeSlots.map((slot, idx) => (
+                    <TouchableOpacity
+                      key={`${slot.key}-${idx}`}
+                      disabled={isSendingPoke}
+                      onPress={() => handleSendPoke(slot)}
+                      style={[styles.pokeBtn, { backgroundColor: c.surface, borderColor: c.border, opacity: isSendingPoke ? 0.6 : 1 }]}
+                    >
+                      <Text style={{ fontSize: 24 }}>{slot.emoji}</Text>
+                      <Text style={[styles.pokeBtnLabel, { color: c.textSecondary }]}>
+                        {t(`poke.messages.${slot.key}`)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Quick Log Section */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: c.textSecondary }]}>{t('home.quickLog').toUpperCase()}</Text>
@@ -252,6 +319,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5,
   },
   pillText: { fontSize: 13, fontWeight: '600' },
+  notifBtn: {
+    position: 'relative',
+    padding: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFF',
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
   section: { paddingHorizontal: 20, marginTop: 20 },
   sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, marginBottom: 4 },
   sectionHint: { fontSize: 12, marginBottom: 12 },
@@ -285,4 +374,38 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, textAlign: 'center', marginTop: 8 },
   startBtn: { paddingVertical: 12, paddingHorizontal: 28, borderRadius: 24 },
   startBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  partnerName: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  pokeGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  pokeBtn: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }
+    }),
+  },
+  pokeBtnLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
 });

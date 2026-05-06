@@ -163,6 +163,8 @@
     "getStarted": "Get Started"
   },
   "poke": {
+    "sendTitle": "Send a Poke",
+    "sentSuccess": "Sent {{emoji}} to {{name}}!",
     "sectionTitle": "Quick Poke",
     "sectionDesc": "Customize the 3 shortcut buttons shown in your notification tray",
     "slotLabel": "Slot {{n}}",
@@ -182,5 +184,16 @@
       "betterDay": "You make my day better",
       "proud": "So proud of you"
     }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications yet",
+    "clearAll": "Clear All",
+    "markRead": "Mark as read",
+    "pokeReceived": "{{name}} sent you a poke: {{emoji}}",
+    "eventAdded": "{{name}} logged a new {{type}}",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "earlier": "Earlier"
   }
 }

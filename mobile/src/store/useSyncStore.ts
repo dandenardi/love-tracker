@@ -6,6 +6,7 @@ import { Partner, type ServerEvent } from '@/types/shared';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
 import { usePokeStore } from './usePokeStore';
+import { useActivityStore } from './useActivityStore';
 
 const STORAGE_KEY = '@love-tracker/sync';
 
@@ -77,8 +78,18 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       set(saved);
       const refreshToken = await storage.getItem('refreshToken');
       if (refreshToken) {
-        const { accessToken } = await authApi.refresh(refreshToken);
-        setAccessToken(accessToken);
+        try {
+          const { accessToken } = await authApi.refresh(refreshToken);
+          setAccessToken(accessToken);
+        } catch (e) {
+          console.error('Failed to refresh token during init:', e);
+          // If refresh fails, tokens might be invalid
+          await get().logout();
+        }
+      } else if (saved.userId) {
+        // We have a userId but no refresh token? That's inconsistent state.
+        console.warn('User ID found without refresh token, logging out.');
+        await get().logout();
       }
     } catch (err) {
       console.error('Failed to init sync store:', err);
@@ -318,6 +329,17 @@ export const useSyncStore = create<SyncState>((set, get) => ({
             synced: 1,
             is_private: 0,
           });
+
+          // Log partner activity
+          const partnerInfo = res.partners.find(p => p.id === se.partnerId);
+          useActivityStore.getState().addActivity({
+            id: `sync-${se.clientId}`,
+            type: 'event_added',
+            title: partnerInfo?.alias || 'Partner',
+            body: se.type, // We can improve this with a better label later
+            timestamp: se.occurred_at,
+            data: { clientId: se.clientId, type: se.type },
+          }).catch(console.error);
         }
       }
 

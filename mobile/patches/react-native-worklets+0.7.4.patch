@@ -1,0 +1,55 @@
+diff --git a/node_modules/react-native-worklets/android/CMakeLists.txt b/node_modules/react-native-worklets/android/CMakeLists.txt
+index 7ce6058..bc9fec0 100644
+--- a/node_modules/react-native-worklets/android/CMakeLists.txt
++++ b/node_modules/react-native-worklets/android/CMakeLists.txt
+@@ -1,4 +1,6 @@
+ project(Worklets)
++set(ANDROID_PLATFORM android-26)
++set(CMAKE_SYSTEM_VERSION 26)
+ cmake_minimum_required(VERSION 3.8)
+ 
+ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+diff --git a/node_modules/react-native-worklets/android/build.gradle b/node_modules/react-native-worklets/android/build.gradle
+index 61c565b..57e1d21 100644
+--- a/node_modules/react-native-worklets/android/build.gradle
++++ b/node_modules/react-native-worklets/android/build.gradle
+@@ -136,7 +136,7 @@ buildscript {
+         mavenCentral()
+     }
+     dependencies {
+-        classpath "com.android.tools.build:gradle:8.2.1"
++        classpath "com.android.tools.build:gradle:8.12.0"
+         classpath "de.undercouch:gradle-download-task:5.6.0"
+         classpath "com.diffplug.spotless:spotless-plugin-gradle:6.25.0"
+     }
+@@ -154,7 +154,7 @@ apply from: "./fix-prefab.gradle"
+ 
+ 
+ android {
+-    compileSdkVersion safeExtGet("compileSdkVersion", 34)
++    compileSdkVersion 36
+ 
+     namespace "com.swmansion.worklets"
+ 
+@@ -178,8 +178,8 @@ android {
+     }
+ 
+     defaultConfig {
+-        minSdkVersion safeExtGet("minSdkVersion", 23)
+-        targetSdkVersion safeExtGet("targetSdkVersion", 34)
++        minSdkVersion 26
++        targetSdkVersion 36
+         versionCode 1
+         versionName WORKLETS_VERSION
+ 
+@@ -200,7 +200,9 @@ android {
+                         "-DWORKLETS_VERSION=${WORKLETS_VERSION}",
+                         "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+                         "-DWORKLETS_FEATURE_FLAGS=${WORKLETS_FEATURE_FLAGS}",
+-                        "-DHERMES_V1_ENABLED=${HERMES_V1_ENABLED}"
++                        "-DHERMES_V1_ENABLED=${HERMES_V1_ENABLED}",
++                        "-DANDROID_PLATFORM=android-26",
++                        "-DCMAKE_SYSTEM_VERSION=26"
+                 abiFilters (*reactNativeArchitectures())
+                 targets("worklets")
+             }

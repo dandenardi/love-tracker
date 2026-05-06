@@ -25,8 +25,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.dandenardi.lovetracker",
-      "versionCode": 3,
-      "minSdkVersion": 24
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 3
     },
     "web": {
       "bundler": "metro",
@@ -56,17 +56,7 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-localization",
-      "@react-native-community/datetimepicker",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 24,
-            "compileSdkVersion": 36,
-            "targetSdkVersion": 36
-          }
-        }
-      ]
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
