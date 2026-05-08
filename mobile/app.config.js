@@ -5,6 +5,10 @@ import { withProjectBuildGradle, withAppBuildGradle } from "@expo/config-plugins
 const config = ({ config }) => {
   return {
     ...config,
+    android: {
+      ...config.android,
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
+    },
     extra: {
       ...config.extra,
       apiUrl: process.env.API_URL,
