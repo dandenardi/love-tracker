@@ -10,6 +10,7 @@ const config = ({ config }) => {
       apiUrl: process.env.API_URL,
     },
     plugins: [
+      "@react-native-google-signin/google-signin",
       ...(config.plugins || []),
       [
         "expo-build-properties",

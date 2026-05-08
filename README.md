@@ -23,6 +23,7 @@ independent. The root `package.json` provides convenience scripts only.
 | Language | TypeScript | ~5.9.2 |
 | Routing | Expo Router (file-based) | ~55.0.13 |
 | State | Zustand | 5.0.12 |
+| Real-time | Socket.io Client | 4.8.1 |
 | Local DB | Expo SQLite | ~55.0.0 |
 | Persistent KV | AsyncStorage | 2.2.0 (replaces MMKV for better stability) |
 | Secure storage | Expo Secure Store | ~55.0.0 |
@@ -43,6 +44,7 @@ independent. The root `package.json` provides convenience scripts only.
 | Concern | Library | Version |
 |---|---|---|
 | Framework | Express | 4.18.2 |
+| Real-time | Socket.io | 4.8.1 |
 | Language | TypeScript | 5.0.0 |
 | Dev runner | ts-node-dev | 2.0.0 |
 | Push notifications | Expo Server SDK | via direct fetch to Expo API |
@@ -130,6 +132,7 @@ CREATE TABLE pokes (
 - i18n: English + Portuguese
 - Partner pairing via invite codes
 - **Push Notifications**: Configured for partner activity alerts (Fixed for standalone builds).
+- **Real-time WebSockets**: Instant pokes and event synchronization (Socket.io).
 - **Quick Poke System**: Background task + persistent notification buttons + slot customization.
 - **Notification Center**: Unified activity hub for pokes and partner events with badge count.
 - **Production Deployment**: Initial builds (v1.0.1, versionCode 3) submitted to Google Play Store.
@@ -137,6 +140,9 @@ CREATE TABLE pokes (
 - **Web Stability**: Fully async DB layer.
 - **TypeScript Compliance**: Zero errors in both packages.
 - **Testing Infrastructure**: Jest + RNTL configured; Maestro smoke test added; Development Client setup.
+- **Adaptive API URL**: Automatic host IP detection for physical device debugging.
+- **Sync Stability**: Fixed duplicate partner contacts and improved WebSocket diagnostics.
+- **Google Sign-In**: Fully integrated and debugged for Android (Fixes "black screen" and DEVELOPER_ERROR).
 
 ### Not Yet Started
 - Export / import data
@@ -192,3 +198,5 @@ To deploy the server to Render:
 4. **i18n strings.** No hardcoded text in components.
 5. **Theme context.** No hardcoded hex colors.
 6. **Expo SDK consistency.** Use `npx expo install` for native modules.
+7. **Adaptive API URL.** Automatically detect host IP via `hostUri` in local dev, fallback to environment-defined production URL.
+8. **Google Sign-In SHA-1.** For Android local dev, ensure the SHA-1 from `./gradlew signingReport` is added to BOTH Firebase and Google Cloud Console (OAuth 2.0 Client IDs).

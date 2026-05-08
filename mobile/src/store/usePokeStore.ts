@@ -141,7 +141,7 @@ export const usePokeStore = create<PokeState>((set, get) => ({
               type: "poke",
               title: latest.senderAlias,
               body: msg ? `${msg.emoji} ${latest.message}` : latest.message,
-              timestamp: latest.sent_at,
+              timestamp: latest.sentAt,
               data: { pokeId: latest.id },
             })
             .catch(console.error);

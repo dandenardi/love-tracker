@@ -161,6 +161,25 @@ function PartnerSyncSection() {
           >
             {sync.isSyncing ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>{isRegistering ? 'Register' : 'Login'}</Text>}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={async () => {
+              try {
+                await sync.googleLogin();
+              } catch (err: any) {
+                // If it's not a cancellation, show an alert
+                if (err.message !== 'Sign in cancelled') {
+                  Alert.alert('Google Sign-In', err.message);
+                }
+              }
+            }}
+            disabled={sync.isSyncing}
+            style={[styles.secondaryBtn, { borderColor: c.border, marginTop: 10, flexDirection: 'row', gap: 10 }]}
+          >
+            <Text style={{ fontSize: 18 }}>Google</Text>
+            <Text style={{ color: c.text, fontWeight: '600' }}>{t('auth.continueWithGoogle')}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => setIsRegistering(!isRegistering)} style={{ marginTop: 12, alignItems: 'center' }}>
             <Text style={{ color: c.primary, fontSize: 13 }}>
               {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}

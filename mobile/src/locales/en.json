@@ -195,5 +195,11 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "earlier": "Earlier"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "createAccount": "Create Account",
+    "continueWithGoogle": "Continue with Google"
   }
 }

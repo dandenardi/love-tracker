@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi, syncApi, setAccessToken, onSessionExpired, pokeApi } from '@/services/syncApi';
 import { storage } from '@/services/storage';
 import { Partner, type ServerEvent } from '@/types/shared';
@@ -53,6 +54,7 @@ interface SyncState {
   init: () => Promise<void>;
   register: (email: string, password: string, alias: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: () => Promise<void>;
   logout: () => Promise<void>;
   generateInvite: () => Promise<string>;
   pairWithCode: (code: string, contactId?: string, includeHistory?: boolean) => Promise<void>;
@@ -73,6 +75,13 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   pushToken: null,
 
   init: async () => {
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: '232389133756-o6o3u6o5e48rp2ln7d69bbr8om2cbci3.apps.googleusercontent.com',
+      offlineAccess: true,
+      scopes: ['profile', 'email'],
+    });
+
     try {
       const saved = await loadSyncState();
       set(saved);
@@ -128,6 +137,49 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
       throw err;
+    }
+  },
+
+  googleLogin: async () => {
+    set({ isSyncing: true, error: null });
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+
+      if (userInfo.type === 'cancelled') {
+        set({ isSyncing: false });
+        return;
+      }
+
+      const idToken = userInfo.data?.idToken;
+      if (!idToken) {
+        throw new Error('Google Sign-In failed: No ID Token returned');
+      }
+
+      const res = await authApi.googleLogin(idToken);
+      
+      await storage.setItem('refreshToken', res.refreshToken);
+      setAccessToken(res.accessToken);
+      
+      await Promise.all([
+        AsyncStorage.setItem(`${STORAGE_KEY}/userId`, res.userId),
+        AsyncStorage.setItem(`${STORAGE_KEY}/alias`, res.alias),
+      ]);
+      
+      set({ userId: res.userId, alias: res.alias, isSyncing: false });
+      await get().sync();
+    } catch (err: any) {
+      console.error('[SyncStore] Google Login Error:', err);
+      // Map common native error codes to friendly messages
+      let msg = err.message;
+      if (err.code === '10') msg = 'DEVELOPER_ERROR: Check SHA-1 in Google Console.';
+      if (err.code === '7') msg = 'NETWORK_ERROR: Please check your connection.';
+      if (err.code === '12501') msg = 'Sign-in cancelled by user.';
+      
+      set({ error: msg, isSyncing: false });
+      throw new Error(msg);
+    } finally {
+      set({ isSyncing: false });
     }
   },
 
@@ -280,10 +332,14 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(res.partners));
 
         // Proactively create contacts for any new active partners
+        // We'll reload contacts first to be sure we have the latest
+        await contactsStore.loadContacts();
         const currentContacts = useContactsStore.getState().contacts;
+        
         for (const p of res.partners) {
           if (p.status === 'active' && !currentContacts.some(c => c.partner_user_id === p.id)) {
-            useContactsStore.getState().addContact({
+            console.log(`[SyncStore] Creating contact for new partner: ${p.alias}`);
+            await useContactsStore.getState().addContact({
               name: p.alias,
               avatar_emoji: '❤️',
               color: '#FF6B6B',
@@ -296,14 +352,16 @@ export const useSyncStore = create<SyncState>((set, get) => ({
 
       // 4. Process pulled events and ensure contacts exist
       if (res.events.length > 0) {
-        // Track contacts locally to avoid duplicates in the same sync loop
-        let currentContacts = [...contactsStore.contacts];
+        // Re-fetch contacts after proactive creation to avoid duplicates in the events loop
+        await contactsStore.loadContacts();
+        let currentContacts = [...useContactsStore.getState().contacts];
         
         for (const se of res.events) {
           // Find or create contact for this partner
           let localContact = currentContacts.find(c => c.partner_user_id === se.partnerId);
           
           if (!localContact) {
+            console.log(`[SyncStore] Contact not found for partner ${se.partnerId} during event sync. Creating...`);
             const partnerInfo = res.partners.find(p => p.id === se.partnerId);
             const newContact = await contactsStore.addContact({
               name: partnerInfo?.alias || 'Partner',
@@ -336,7 +394,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
             id: `sync-${se.clientId}`,
             type: 'event_added',
             title: partnerInfo?.alias || 'Partner',
-            body: se.type, // We can improve this with a better label later
+            body: se.type,
             timestamp: se.occurred_at,
             data: { clientId: se.clientId, type: se.type },
           }).catch(console.error);

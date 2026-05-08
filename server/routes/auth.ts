@@ -22,6 +22,19 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/google-login', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ error: 'idToken is required' });
+    }
+    const response = await AuthService.googleLogin(idToken);
+    res.json(response);
+  } catch (e: any) {
+    res.status(401).json({ error: e.message });
+  }
+});
+
 router.post('/refresh', async (req, res) => {
   try {
     const response = await AuthService.refresh(req.body.refreshToken);

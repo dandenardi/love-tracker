@@ -57,6 +57,7 @@ export async function initDatabase(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_events_contact ON events(contact_id);
     CREATE INDEX IF NOT EXISTS idx_events_occurred ON events(occurred_at);
     CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_partner_user_id ON contacts(partner_user_id) WHERE partner_user_id IS NOT NULL;
   `);
 
   // ── Safe migrations ──────────────────────────────────────────────────────

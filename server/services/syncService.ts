@@ -2,6 +2,7 @@ import pool from '../db/pool';
 import { ServerEvent, SyncPullResponse } from '../shared';
 import { AuthService } from './authService';
 import { sendExpoPushNotification } from './notificationService';
+import { socketManager } from '../socket';
 
 /** Human-readable label + emoji for each event type key */
 const EVENT_TYPE_LABELS: Record<string, { label: string; emoji: string }> = {
@@ -71,15 +72,15 @@ export class SyncService {
           ? `${senderAlias} logged ${typeInfo.label} ${typeInfo.emoji}`
           : `${senderAlias} updated ${typeInfo.label} ${typeInfo.emoji}`;
 
-        // Get partner's push token from the partnership
-        const partnerTokenResult = await pool.query(
-          `SELECT u.push_token FROM users u
+        // Get partner's ID and push token from the partnership
+        const partnerInfoResult = await pool.query(
+          `SELECT u.id as partner_id, u.push_token FROM users u
            JOIN partnerships p ON (p.user_id_1 = u.id OR p.user_id_2 = u.id)
            WHERE p.id = $1 AND u.id != $2 AND p.status = 'active'`,
           [event.partnershipId, userId]
         );
 
-        for (const row of partnerTokenResult.rows) {
+        for (const row of partnerInfoResult.rows) {
           if (row.push_token) {
             // fire-and-forget — do not await to avoid slowing the sync response
             sendExpoPushNotification(
@@ -89,6 +90,12 @@ export class SyncService {
               { type: 'event_sync', eventType: event.type }
             );
           }
+          
+          // Real-time socket event
+          socketManager.emitToUser(row.partner_id, 'data_changed', {
+            type: 'event_sync',
+            senderAlias,
+          });
         }
       }
     }

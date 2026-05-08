@@ -20,7 +20,8 @@ import { initDatabase } from '@/db/schema';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useSyncStore } from '@/store/useSyncStore';
 import { usePokeStore } from '@/store/usePokeStore';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, AppState } from 'react-native';
+import { useSocketStore } from '@/store/useSocketStore';
 import {
   registerForPushNotificationsAsync,
   registerPokeCategory,
@@ -48,6 +49,8 @@ function AppContent() {
   const registerPushToken = useSyncStore((s) => s.registerPushToken);
   const slots = usePokeStore((s) => s.slots);
 
+  const { connect: connectSocket, disconnect: disconnectSocket } = useSocketStore();
+
   useEffect(() => {
     initDatabase()
       .then(async () => {
@@ -62,6 +65,32 @@ function AppContent() {
         console.error('APP INIT ERROR:', err);
       });
   }, []);
+
+  // Socket and Background/Foreground lifecycle
+  useEffect(() => {
+    if (!userId) {
+      disconnectSocket();
+      return;
+    }
+
+    // Connect immediately if we have a userId
+    connectSocket();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('[_layout] App came to foreground, connecting socket and syncing...');
+        connectSocket();
+        sync().catch(console.error);
+      } else if (nextAppState.match(/inactive|background/)) {
+        console.log('[_layout] App went to background, disconnecting socket...');
+        disconnectSocket();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [userId]);
 
   // Register push token and set up persistent poke notification
   useEffect(() => {
@@ -93,14 +122,6 @@ function AppContent() {
       }
     })();
   }, [userId, partners.length]);
-
-  // Periodic sync every 60 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      sync().catch(console.error);
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [sync]);
 
   if (!isReady) {
     return (

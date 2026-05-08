@@ -1,6 +1,7 @@
 import pool from '../db/pool';
 import { PokePayload, Poke } from '../shared';
 import { sendExpoPushNotification } from './notificationService';
+import { socketManager } from '../socket';
 
 export class PokeService {
   /**
@@ -55,6 +56,15 @@ export class PokeService {
     } else {
       console.warn('[PokeService] Recipient has no push token, skipping notification');
     }
+
+    // 5. Emit real-time socket event (fire-and-forget)
+    socketManager.emitToUser(partnerId, 'new_poke', {
+      senderId,
+      senderAlias,
+      message,
+      emoji,
+      sentAt,
+    });
   }
 
   /**

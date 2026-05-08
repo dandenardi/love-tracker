@@ -78,21 +78,40 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
 
   cleanupDuplicates: async () => {
     const { contacts } = get();
-    const partners = contacts.filter(c => c.partner_user_id);
+    // Consider both partner_user_id and is_partner flag
+    const partners = contacts.filter(c => c.partner_user_id || c.is_partner === 1);
     if (partners.length < 2) return;
 
-    const seen = new Map<string, Contact>();
+    const seenByUserId = new Map<string, Contact>();
+    const seenByName = new Map<string, Contact>();
     const toRemove: string[] = [];
     const merges: { from: string, to: string }[] = [];
 
     for (const p of partners) {
-      const pid = p.partner_user_id!;
-      if (seen.has(pid)) {
-        const master = seen.get(pid)!;
+      const pid = p.partner_user_id;
+      const name = p.name.toLowerCase().trim();
+      
+      let master: Contact | undefined;
+      
+      if (pid && seenByUserId.has(pid)) {
+        master = seenByUserId.get(pid);
+      } else if (seenByName.has(name) && (!pid || !seenByName.get(name)?.partner_user_id)) {
+        // If names match and we haven't found a better match by ID yet
+        master = seenByName.get(name);
+      }
+
+      if (master && master.id !== p.id) {
         toRemove.push(p.id);
         merges.push({ from: p.id, to: master.id });
+        
+        // If the duplicate has a partner_user_id but the master doesn't, update the master
+        if (p.partner_user_id && !master.partner_user_id) {
+           master.partner_user_id = p.partner_user_id;
+           await updateContact(master.id, { partner_user_id: p.partner_user_id });
+        }
       } else {
-        seen.set(pid, p);
+        if (pid) seenByUserId.set(pid, p);
+        seenByName.set(name, p);
       }
     }
 

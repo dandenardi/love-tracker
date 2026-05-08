@@ -16,19 +16,40 @@ import {
 import { storage } from './storage';
 import Constants from 'expo-constants';
 
-// Use apiUrl from app.json/app.config.js extra field
-let BASE_URL = Constants.expoConfig?.extra?.apiUrl || (Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001');
+const getBaseUrl = () => {
+  // 1. Check if an API_URL was explicitly provided (e.g. via .env or EAS)
+  const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (extraApiUrl) return extraApiUrl;
+
+  // 2. In development, try to auto-detect the host IP from Metro
+  if (__DEV__) {
+    const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.0.107:8081"
+    if (hostUri) {
+      const ip = hostUri.split(':')[0];
+      return `http://${ip}:3001`;
+    }
+  }
+
+  // 3. Fallback for emulators/simulators
+  return Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001';
+};
+
+let BASE_URL_LOCAL = getBaseUrl();
 
 // Ensure no trailing slash
-if (BASE_URL.endsWith('/')) {
-  BASE_URL = BASE_URL.slice(0, -1);
+if (BASE_URL_LOCAL.endsWith('/')) {
+  BASE_URL_LOCAL = BASE_URL_LOCAL.slice(0, -1);
 }
+
+export const BASE_URL = BASE_URL_LOCAL;
 
 let accessToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
   accessToken = token;
 };
+
+export const getAccessToken = () => accessToken;
 
 let sessionExpiredCallback: (() => void) | null = null;
 export const onSessionExpired = (cb: () => void) => {
@@ -117,6 +138,11 @@ export const authApi = {
   login: (payload: LoginPayload) => request<AuthResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
+  }),
+
+  googleLogin: (idToken: string) => request<AuthResponse>('/auth/google-login', {
+    method: 'POST',
+    body: JSON.stringify({ idToken }),
   }),
   
   refresh: (refreshToken: string) => request<RefreshResponse>('/auth/refresh', {

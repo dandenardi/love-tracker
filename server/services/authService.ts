@@ -1,8 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import { OAuth2Client } from 'google-auth-library';
 import pool from '../db/pool';
 import { RegisterPayload, LoginPayload, AuthResponse, RefreshResponse, PairResponse, Partner } from '../shared';
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const ACCESS_TOKEN_EXPIRE = process.env.ACCESS_TOKEN_EXPIRE || '15m';
@@ -30,6 +33,40 @@ export class AuthService {
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       throw new Error('Invalid email or password');
+    }
+
+    return this.generateAuthResponse(user.id, user.email, user.alias);
+  }
+
+  static async googleLogin(idToken: string): Promise<AuthResponse> {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      throw new Error('Invalid Google token');
+    }
+
+    const { email, name, picture } = payload;
+    const lowerEmail = email.toLowerCase();
+
+    // Check if user exists
+    let result = await pool.query('SELECT * FROM users WHERE email = $1', [lowerEmail]);
+    let user = result.rows[0];
+
+    if (!user) {
+      // Create user if not exists
+      const alias = name || lowerEmail.split('@')[0];
+      const passwordHash = await bcrypt.hash(uuidv4(), 10); // Random password
+      const createdAt = Date.now();
+
+      const insertResult = await pool.query(
+        'INSERT INTO users (email, password_hash, alias, created_at) VALUES ($1, $2, $3, $4) RETURNING id',
+        [lowerEmail, passwordHash, alias, createdAt]
+      );
+      user = { id: insertResult.rows[0].id, email: lowerEmail, alias };
     }
 
     return this.generateAuthResponse(user.id, user.email, user.alias);

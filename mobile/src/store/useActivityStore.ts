@@ -34,7 +34,10 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
-        set({ activities: JSON.parse(raw), isLoaded: true });
+        const loaded: Activity[] = JSON.parse(raw);
+        // Remove duplicates that might have been saved in previous versions
+        const unique = loaded.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+        set({ activities: unique, isLoaded: true });
       } else {
         set({ isLoaded: true });
       }
@@ -46,6 +49,12 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
 
   addActivity: async (activity) => {
     if (!get().isLoaded) await get().loadActivities();
+
+    // Avoid duplicates by ID
+    if (get().activities.some(a => a.id === activity.id)) {
+      console.log('[ActivityStore] Activity already exists, skipping:', activity.id);
+      return;
+    }
 
     // Use current time as fallback if timestamp is missing or invalid
     let dateObj = new Date(activity.timestamp || Date.now());
