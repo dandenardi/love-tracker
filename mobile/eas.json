@@ -24,7 +24,7 @@
       "node": "22.14.0",
       "distribution": "store",
       "android": {
-        "buildType": "app-bundle"
+        "gradleCommand": ":app:bundleRelease"
       },
       "env": {
         "API_URL": "https://love-tracker-server.onrender.com"
