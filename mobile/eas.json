@@ -8,8 +8,7 @@
       "node": "22.14.0",
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-      }
+      "env": {}
     },
     "preview": {
       "node": "22.14.0",
@@ -35,7 +34,7 @@
   "submit": {
     "production": {
       "android": {
-        "releaseStatus": "draft"
+        "releaseStatus": "completed"
       }
     }
   }
