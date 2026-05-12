@@ -93,4 +93,13 @@ router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.delete('/partnership/:partnerId', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    await AuthService.deletePartnership(req.user!.id, req.params.partnerId);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;

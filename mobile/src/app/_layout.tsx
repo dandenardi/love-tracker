@@ -26,6 +26,7 @@ import {
   registerForPushNotificationsAsync,
   registerPokeCategory,
   schedulePokeNotification,
+  setupNotificationListeners,
 } from '@/services/notificationService';
 import { useTranslation } from 'react-i18next';
 
@@ -91,6 +92,12 @@ function AppContent() {
       subscription.remove();
     };
   }, [userId]);
+
+  // Setup notification response listeners
+  useEffect(() => {
+    const cleanup = setupNotificationListeners();
+    return cleanup;
+  }, []);
 
   // Register push token and set up persistent poke notification
   useEffect(() => {

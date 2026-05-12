@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import Constants from 'expo-constants';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator, Modal, FlatList, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, ActivityIndicator, Modal, FlatList, Linking, Platform,
 } from 'react-native';
+import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
@@ -44,6 +47,7 @@ function PartnerSyncSection() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [pairCode, setPairCode] = useState('');
   const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [targetContactId, setTargetContactId] = useState<string | null>(null);
   const [shareHistory, setShareHistory] = useState(true);
   
@@ -93,15 +97,45 @@ function PartnerSyncSection() {
     }
   };
 
-  const handleUnpair = (partnerId: string, partnerAlias: string) => {
+  const handleUnpair = (partnerId: string, name: string) => {
     Alert.alert(
       t('settings.unpairConfirmTitle'),
-      t('settings.unpairConfirmDesc', { name: partnerAlias }),
+      t('settings.unpairConfirmDesc', { name }),
       [
         { text: t('common.cancel'), style: 'cancel' },
-        { text: t('settings.unpair'), style: 'destructive', onPress: () => sync.unpair(partnerId) }
+        { 
+          text: t('settings.unpair'), 
+          style: 'destructive',
+          onPress: () => sync.unpair(partnerId).catch(err => Alert.alert('Error', err.message))
+        },
       ]
     );
+  };
+
+  const handleForgetPartner = (partnerId: string, name: string) => {
+    Alert.alert(
+      t('settings.forgetPartnerConfirmTitle'),
+      t('settings.forgetPartnerConfirmDesc', { name }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: t('settings.forgetOnly'), 
+          onPress: () => sync.forgetPartner(partnerId, false).catch(err => Alert.alert('Error', err.message))
+        },
+        { 
+          text: t('settings.forgetAndWipe'), 
+          style: 'destructive',
+          onPress: () => sync.forgetPartner(partnerId, true).catch(err => Alert.alert('Error', err.message))
+        },
+      ]
+    );
+  };
+
+  const handleCopyInvite = async () => {
+    if (!inviteCode) return;
+    await Clipboard.setStringAsync(inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDeleteAccount = () => {
@@ -167,18 +201,28 @@ function PartnerSyncSection() {
               try {
                 await sync.googleLogin();
               } catch (err: any) {
-                // If it's not a cancellation, show an alert
                 if (err.message !== 'Sign in cancelled') {
                   Alert.alert('Google Sign-In', err.message);
                 }
               }
             }}
             disabled={sync.isSyncing}
-            style={[styles.secondaryBtn, { borderColor: c.border, marginTop: 10, flexDirection: 'row', gap: 10 }]}
+            style={[styles.secondaryBtn, { borderColor: c.border, marginTop: 10 }]}
           >
-            <Text style={{ fontSize: 18 }}>Google</Text>
-            <Text style={{ color: c.text, fontWeight: '600' }}>{t('auth.continueWithGoogle')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <AntDesign name="google" size={18} color={c.text} />
+              <Text style={{ color: c.text, fontWeight: '600' }}>{t('auth.continueWithGoogle')}</Text>
+            </View>
           </TouchableOpacity>
+
+          {Platform.OS === 'android' && !sync.playServicesAvailable && (
+            <View style={{ marginTop: 12, padding: 10, backgroundColor: c.error + '15', borderRadius: 8, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <AntDesign name="warning" size={14} color={c.error} />
+              <Text style={{ color: c.error, fontSize: 11, flex: 1 }}>
+                {t('settings.playServicesWarning')}
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity onPress={() => setIsRegistering(!isRegistering)} style={{ marginTop: 12, alignItems: 'center' }}>
             <Text style={{ color: c.primary, fontSize: 13 }}>
@@ -206,6 +250,15 @@ function PartnerSyncSection() {
           </View>
         </SettingRow>
 
+        {Platform.OS === 'android' && !sync.playServicesAvailable && (
+          <View style={{ padding: 12, backgroundColor: c.error + '10', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <AntDesign name="warning" size={14} color={c.error} />
+              <Text style={{ color: c.error, fontSize: 11, fontWeight: '600' }}>{t('settings.playServicesWarning')}</Text>
+            </View>
+          </View>
+        )}
+
         {sync.partners.length > 0 && (
           <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }}>
             {sync.partners.map((p, idx) => (
@@ -215,9 +268,13 @@ function PartnerSyncSection() {
                 desc={p.status === 'active' ? t('settings.activeSync') : t('settings.unpaired')}
                 last={idx === sync.partners.length - 1 && !inviteCode}
               >
-                {p.status === 'active' && (
+                {p.status === 'active' ? (
                   <TouchableOpacity onPress={() => handleUnpair(p.id, p.alias)}>
                     <Text style={{ color: c.error, fontSize: 12, fontWeight: '600' }}>{t('settings.unpair')}</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={() => handleForgetPartner(p.id, p.alias)}>
+                    <Text style={{ color: c.error, fontSize: 12, fontWeight: '600' }}>{t('common.delete')}</Text>
                   </TouchableOpacity>
                 )}
               </SettingRow>
@@ -231,9 +288,15 @@ function PartnerSyncSection() {
           {inviteCode ? (
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
               <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 4 }}>Your Pair Code:</Text>
-              <Text style={{ color: c.primary, fontSize: 24, fontWeight: '800', letterSpacing: 2 }}>{inviteCode}</Text>
-              <Text style={{ color: c.textMuted, fontSize: 10, marginTop: 4 }}>Expires in 30 minutes</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={{ color: c.primary, fontSize: 28, fontWeight: '800', letterSpacing: 2 }}>{inviteCode}</Text>
+                <TouchableOpacity onPress={handleCopyInvite} style={{ padding: 4 }}>
+                  <Ionicons name={copied ? "checkmark-circle" : "copy-outline"} size={22} color={copied ? c.success : c.primary} />
+                </TouchableOpacity>
+              </View>
+              {copied && <Text style={{ color: c.success, fontSize: 11, fontWeight: '600', marginTop: 4 }}>{t('common.copied')}</Text>}
+              <Text style={{ color: c.textMuted, fontSize: 10, marginTop: 8 }}>Expires in 30 minutes</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 8 }}>
                 <ActivityIndicator size="small" color={c.primary} />
                 <Text style={{ color: c.textSecondary, fontSize: 13 }}>Waiting for partner...</Text>
               </View>
@@ -580,7 +643,9 @@ function SettingsScreen() {
           </SettingRow>
         </View>
 
-        <Text style={[styles.version, { color: c.textMuted }]}>Love Tracker v1.0.0</Text>
+        <Text style={[styles.version, { color: c.textMuted }]}>
+          {t('settings.versionDisplay', { version: Constants.expoConfig?.version || '1.0.0' })}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

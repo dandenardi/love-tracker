@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "love-tracker",
+    "name": "Love Tracker",
     "slug": "love-tracker",
     "version": "1.0.2",
     "orientation": "portrait",
@@ -46,10 +46,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#110A0D",
           "android": {
             "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
+            "imageWidth": 200
           }
         }
       ],

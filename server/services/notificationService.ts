@@ -15,6 +15,9 @@ interface ExpoPushMessage {
   sound?: 'default' | null;
   badge?: number;
   priority?: 'default' | 'normal' | 'high';
+  categoryIdentifier?: string;
+  channelId?: string;
+  _displayInForeground?: boolean;
 }
 
 interface ExpoPushTicket {
@@ -28,7 +31,8 @@ export async function sendExpoPushNotification(
   expoPushToken: string,
   title: string,
   body: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
+  categoryIdentifier?: string
 ): Promise<void> {
   // Skip tokens that are not Expo push tokens (e.g. raw FCM/APNs tokens)
   if (!expoPushToken.startsWith('ExponentPushToken[') && !expoPushToken.startsWith('ExpoPushToken[')) {
@@ -43,8 +47,9 @@ export async function sendExpoPushNotification(
     data,
     sound: 'default',
     priority: 'high',
-    // @ts-ignore - channelId is supported by Expo but might not be in the local interface
     channelId: 'love-tracker',
+    categoryIdentifier,
+    _displayInForeground: true,
   };
 
   try {

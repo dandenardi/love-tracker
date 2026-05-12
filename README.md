@@ -115,6 +115,8 @@ CREATE TABLE pokes (
 ## Key Features
 
 - **Quick Poke**: Persistent notification in the system tray with 3 customizable slots. Send "Thinking of you", "I love you", etc., without opening the app.
+- **Respond Now**: Received pokes now show your 3 slots as buttons in the notification tray, allowing for instant replies.
+- **Definitive Break-up**: Option to permanently remove unpaired partners with a choice to wipe all local history associated with them.
 - **Push Notifications**: Receive instant alerts when your partner logs a new event (Shared events only).
 - **Privacy Lock**: 4-digit PIN or Biometrics (FaceID/Fingerprint) with configurable timeout.
 - **Partner Sync**: Real-time synchronization of shared events across devices.
@@ -131,11 +133,12 @@ CREATE TABLE pokes (
 - Theme switching (6 themes)
 - i18n: English + Portuguese
 - Partner pairing via invite codes
-- **Push Notifications**: Configured for partner activity alerts (Fixed for standalone builds).
+- **Push Notifications**: FCM V1 integration stable for standalone Android builds (Fixed EAS Project ID and Google IAM permissions).
 - **Real-time WebSockets**: Instant pokes and event synchronization (Socket.io).
-- **Quick Poke System**: Background task + persistent notification buttons + slot customization.
+- **Quick Poke System**: Background task + persistent notification buttons + slot customization. (Fixed registration for "killed" app state and enhanced with instant replies).
 - **Notification Center**: Unified activity hub for pokes and partner events with badge count.
-- **Production Deployment**: Initial builds (v1.0.1, versionCode 3) submitted to Google Play Store.
+- **Production Deployment**: Builds submitted to Google Play Store (Current: v1.0.2).
+- **App Branding & Versioning**: Proper "Love Tracker" name, premium Splash Screen, and dynamic versioning in Settings.
 - **Render Server Stability**: Fixed deployment configuration for flat repo structure.
 - **Web Stability**: Fully async DB layer.
 - **TypeScript Compliance**: Zero errors in both packages.
@@ -143,6 +146,7 @@ CREATE TABLE pokes (
 - **Adaptive API URL**: Automatic host IP detection for physical device debugging.
 - **Sync Stability**: Fixed duplicate partner contacts and improved WebSocket diagnostics.
 - **Google Sign-In**: Fully integrated and debugged for Android (Fixes "black screen" and DEVELOPER_ERROR).
+- **Notification Reliability**: Fixed background task registration, added response listeners, and implemented token persistence/cleanup. (Resolved critical 403 Permission Denied issues and EAS Project ID mapping).
 
 ### Not Yet Started
 - Export / import data
@@ -199,4 +203,4 @@ To deploy the server to Render:
 5. **Theme context.** No hardcoded hex colors.
 6. **Expo SDK consistency.** Use `npx expo install` for native modules.
 7. **Adaptive API URL.** Automatically detect host IP via `hostUri` in local dev, fallback to environment-defined production URL.
-8. **Google Sign-In SHA-1.** For Android local dev, ensure the SHA-1 from `./gradlew signingReport` is added to BOTH Firebase and Google Cloud Console (OAuth 2.0 Client IDs).
+8. **Google Sign-In SHA-1.** Ensure the SHA-1 fingerprints for BOTH local dev (from `./gradlew signingReport`) AND production (from Google Play Console -> App Integrity) are added to the Google Cloud Console (OAuth 2.0 Client IDs).

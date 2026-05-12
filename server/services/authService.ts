@@ -165,6 +165,17 @@ export class AuthService {
   static async deleteAccount(userId: string): Promise<void> {
     await pool.query('DELETE FROM users WHERE id = $1', [userId]);
   }
+  
+  static async deletePartnership(userId: string, partnerId: string): Promise<void> {
+    const u1 = userId < partnerId ? userId : partnerId;
+    const u2 = userId < partnerId ? partnerId : userId;
+    
+    await pool.query(
+      'DELETE FROM partnerships WHERE user_id_1 = $1 AND user_id_2 = $2',
+      [u1, u2]
+    );
+    console.log(`[AuthService] Partnership deleted between ${userId.substring(0, 8)} and ${partnerId.substring(0, 8)}`);
+  }
 
   static async getPartnerships(userId: string): Promise<Partner[]> {
     const result = await pool.query(

@@ -75,11 +75,12 @@ export function definePokeBackgroundTask(): void {
     const TaskManager = require('expo-task-manager');
     const Notifications = require('expo-notifications');
 
+    // 1. Define the task
     TaskManager.defineTask(
       POKE_BACKGROUND_TASK,
       async ({ data, error }: any) => {
         if (error) {
-          console.error('[PokeTask] Error:', error);
+          console.error('[PokeTask] Error in background task:', error);
           return;
         }
 
@@ -100,12 +101,29 @@ export function definePokeBackgroundTask(): void {
             slots?: PokeMessage[];
           };
 
-          if (!notifData?.partnerId || !notifData?.slots) return;
+          if (!notifData?.partnerId) return;
+          
+          let slots = notifData.slots;
+          if (!slots) {
+            // If slots are missing (e.g. from a remote push), try to load them from storage
+            try {
+              const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+              const SLOTS_KEY = '@love-tracker/poke_slots';
+              const raw = await AsyncStorage.getItem(SLOTS_KEY);
+              if (raw) {
+                slots = JSON.parse(raw);
+              }
+            } catch (e) {
+              console.error('[PokeTask] Failed to load slots from storage:', e);
+            }
+          }
 
-          const slot = notifData.slots.find(s => s.key === actionId);
+          if (!slots) return;
+
+          const slot = slots.find(s => s.key === actionId);
           if (!slot) return;
 
-          console.log('[PokeTask] Sending poke:', actionId, 'to partner:', notifData.partnerId);
+          console.log('[PokeTask] Background response detected. Sending poke:', actionId, 'to partner:', notifData.partnerId);
 
           await pokeApi.send({
             partnerId: notifData.partnerId,
@@ -113,15 +131,80 @@ export function definePokeBackgroundTask(): void {
             emoji: slot.emoji,
           });
 
-          console.log('[PokeTask] Poke sent successfully');
+          console.log('[PokeTask] Background poke sent successfully');
         } catch (err: any) {
-          console.error('[PokeTask] Failed to send poke:', err.message);
+          console.error('[PokeTask] Failed to send background poke:', err.message);
         }
       }
     );
+
+    // 2. IMPORTANT: Register the task with the notifications system.
+    // This was missing and is critical for the task to be triggered when app is killed.
+    Notifications.registerTaskAsync(POKE_BACKGROUND_TASK)
+      .then(() => console.log('[Notifications] Background task registered successfully:', POKE_BACKGROUND_TASK))
+      .catch((err: any) => console.error('[Notifications] Failed to register background task:', err));
+
   } catch (err) {
-    console.error('[Notifications] Failed to define background task:', err);
+    console.error('[Notifications] Failed to define/register background task:', err);
   }
+}
+
+/**
+ * Sets up the notification response listener for when the app is alive.
+ */
+export function setupNotificationListeners(): () => void {
+  if (isExpoGo || Platform.OS === 'web') return () => {};
+  
+  const Notifications = require('expo-notifications');
+
+  const subscription = Notifications.addNotificationResponseReceivedListener(async (response: any) => {
+    const actionId = response.actionIdentifier;
+    
+    // Ignore default actions (tapping the notification itself)
+    if (
+      !actionId ||
+      actionId === Notifications.DEFAULT_ACTION_IDENTIFIER ||
+      actionId === 'com.apple.UNNotificationDismissActionIdentifier'
+    ) {
+      return;
+    }
+
+    const data = response.notification?.request?.content?.data;
+    if (!data?.partnerId) return;
+
+    let slots = data.slots;
+    if (!slots) {
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const SLOTS_KEY = '@love-tracker/poke_slots';
+        const raw = await AsyncStorage.getItem(SLOTS_KEY);
+        if (raw) {
+          slots = JSON.parse(raw);
+        }
+      } catch (e) {
+        console.error('[Notifications] Failed to load slots from storage in listener:', e);
+      }
+    }
+
+    if (!slots) return;
+
+    const slot = slots.find((s: PokeMessage) => s.key === actionId);
+    if (!slot) return;
+
+    try {
+      console.log('[Notifications] Foreground/Background response detected. Sending poke:', actionId);
+      await pokeApi.send({
+        partnerId: data.partnerId,
+        message: actionId,
+        emoji: slot.emoji,
+      });
+      console.log('[Notifications] Poke sent successfully from listener');
+    } catch (err: any) {
+      console.error('[Notifications] Failed to send poke from listener:', err.message);
+    }
+  });
+
+  return () => subscription.remove();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,6 +231,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#E85D75',
+        showBadge: true,
+        enableVibration: true,
       });
     }
 
@@ -165,30 +250,72 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     }
 
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async (notification: any) => {
+        const data = notification.request.content.data;
+        
+        // If the notification is for a specific recipient and it's NOT the current user, hide it.
+        // This solves the bug where users receive their own pokes when sharing a device/token.
+        if (data?.recipientId) {
+          try {
+            // We need to check the current userId. 
+            // Since we're in a service, we can't use hooks, we'll try to get it from storage.
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const currentUserId = await AsyncStorage.getItem('@love-tracker/sync/userId');
+            if (currentUserId && data.recipientId !== currentUserId) {
+              console.log('[Notifications] Hiding notification intended for another user:', data.recipientId);
+              return {
+                shouldShowBanner: false,
+                shouldShowList: false,
+                shouldPlaySound: false,
+              };
+            }
+          } catch (e) {
+            // Fallback: show if we can't check
+          }
+        }
+
+        return {
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        };
+      },
     });
 
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ??
+      Constants?.expoConfig?.extra?.projectId ??
       Constants?.easConfig?.projectId;
 
-    if (!projectId) {
-      console.warn('[Notifications] No projectId found in Constants. Token might fail in standalone builds.');
-    }
+    console.log('[Notifications] Using ProjectID for Token:', projectId || 'NONE (Using default)');
 
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
     
-    console.log('[Notifications] Push token:', tokenData.data.substring(0, 40) + '…');
-    return tokenData.data;
+    const token = tokenData.data;
+    console.log('[Notifications] Token retrieved:', token);
+    
+    // Diagnostic: verify the token structure
+    if (!token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
+      console.warn('[Notifications] Warning: Retrieved token does not look like an Expo Push Token.');
+    }
+
+    // Save userId to storage for notification filtering (persistent across app restarts)
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const { userId } = require('../store/useSyncStore').useSyncStore.getState();
+    if (userId) {
+      await AsyncStorage.setItem('@love-tracker/sync/userId', userId);
+      console.log('[Notifications] Registered userId for filtering:', userId);
+    }
+
+    return token;
   } catch (err: any) {
     console.error('[Notifications] Failed to get push token:', err.message);
+    if (err.message.includes('PROJECT_ID_NOT_FOUND')) {
+      console.error('[Notifications] Critical: EAS Project ID is missing from Constants.');
+    }
     return null;
   }
 }

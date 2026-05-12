@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build folders
+android/
+ios/
+dist/
+web-build/
+
+# Cache and temporary folders
+.expo/
+.kotlin/
+.gradle/
+build/
+
+# Debug and logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# Sensitive info (already handled by secrets, but safe to ignore here too)
+google-services.json
+*.jks
+*.p8
+*.p12
+*.key

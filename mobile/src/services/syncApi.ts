@@ -30,7 +30,13 @@ const getBaseUrl = () => {
     }
   }
 
-  // 3. Fallback for emulators/simulators
+  // 3. Fallback for production if extraApiUrl is missing (adjust to your Render URL)
+  // If we are NOT in dev and have no extraApiUrl, we are likely in a production build
+  // that was misconfigured. Let's provide a hint in the logs.
+  if (!__DEV__) {
+    console.error('[API] PRODUCTION ALERT: No API_URL found in Constants. Falls back to localhost!');
+  }
+
   return Platform.OS === 'android' ? 'http://10.0.2.2:3001' : 'http://localhost:3001';
 };
 
@@ -158,15 +164,18 @@ export const authApi = {
     method: 'POST',
     body: JSON.stringify({ code }),
   }),
-  
-  unpair: (partnerId: string) => request<{ success: boolean }>('/auth/unpair', {
+
+  unpair: (partnerId: string) => request<{ status: string }>('/auth/unpair', {
     method: 'POST',
     body: JSON.stringify({ partnerId }),
   }),
   
-  deleteAccount: () => request<{ success: boolean }>('/auth/account', {
+  deleteAccount: () => request<{ status: string }>('/auth/account', {
     method: 'DELETE',
   }),
+
+  forgetPartner: (partnerId: string) =>
+    request<{ status: string }>(`/auth/partnership/${partnerId}`, { method: 'DELETE' }),
 };
 
 export const syncApi = {
@@ -190,6 +199,13 @@ export const pokeApi = {
     request<{ status: string }>('/auth/push-token', {
       method: 'POST',
       body: JSON.stringify({ token }),
+    }),
+
+  /** Clear the device push token on the server */
+  clearPushToken: () =>
+    request<{ status: string }>('/auth/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token: '' }), // Sending empty string to clear it
     }),
 
   /** Send a poke to a partner */

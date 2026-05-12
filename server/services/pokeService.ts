@@ -50,8 +50,9 @@ export class PokeService {
       await sendExpoPushNotification(
         recipientToken,
         senderAlias,
-        `${senderAlias} ${message} ${emoji}`,
-        { type: 'poke', senderId, message, emoji }
+        `${emoji} ${senderAlias} te enviou um poke!`, // Generic localized-ish body
+        { type: 'poke', senderId, recipientId: partnerId, partnerId: senderId, message, emoji },
+        'POKE_CATEGORY'
       );
     } else {
       console.warn('[PokeService] Recipient has no push token, skipping notification');

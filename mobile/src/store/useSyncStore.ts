@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi, syncApi, setAccessToken, onSessionExpired, pokeApi } from '@/services/syncApi';
@@ -12,11 +13,12 @@ import { useActivityStore } from './useActivityStore';
 const STORAGE_KEY = '@love-tracker/sync';
 
 async function loadSyncState() {
-  const [userId, alias, partnersJson, lastSyncedAt] = await Promise.all([
+  const [userId, alias, partnersJson, lastSyncedAt, pushToken] = await Promise.all([
     AsyncStorage.getItem(`${STORAGE_KEY}/userId`),
     AsyncStorage.getItem(`${STORAGE_KEY}/alias`),
     AsyncStorage.getItem(`${STORAGE_KEY}/partners`),
     AsyncStorage.getItem(`${STORAGE_KEY}/lastSyncedAt`),
+    AsyncStorage.getItem(`${STORAGE_KEY}/pushToken`),
   ]);
   
   let partners: Partner[] = [];
@@ -39,6 +41,7 @@ async function loadSyncState() {
     alias: alias || null,
     partners,
     lastSyncedAt: lastSyncedAt ? parseInt(lastSyncedAt, 10) : 0,
+    pushToken: pushToken || null,
   };
 }
 
@@ -50,8 +53,10 @@ interface SyncState {
   isSyncing: boolean;
   error: string | null;
   pushToken: string | null;
+  playServicesAvailable: boolean;
 
   init: () => Promise<void>;
+  checkPlayServices: () => Promise<boolean>;
   register: (email: string, password: string, alias: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   googleLogin: () => Promise<void>;
@@ -63,6 +68,7 @@ interface SyncState {
   /** Save the Expo push token to state and register it on the server */
   registerPushToken: (token: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
+  forgetPartner: (partnerId: string, wipeHistory: boolean) => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -73,6 +79,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   isSyncing: false,
   error: null,
   pushToken: null,
+  playServicesAvailable: true, // Default to true, check in init
 
   init: async () => {
     // Configure Google Sign-In
@@ -81,6 +88,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       offlineAccess: true,
       scopes: ['profile', 'email'],
     });
+
+    if (Platform.OS === 'android') {
+      await get().checkPlayServices();
+    }
 
     try {
       const saved = await loadSyncState();
@@ -140,6 +151,19 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     }
   },
 
+  checkPlayServices: async () => {
+    if (Platform.OS !== 'android') return true;
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: false });
+      set({ playServicesAvailable: true });
+      return true;
+    } catch (e) {
+      console.log('[SyncStore] Play Services not available:', e);
+      set({ playServicesAvailable: false });
+      return false;
+    }
+  },
+
   googleLogin: async () => {
     set({ isSyncing: true, error: null });
     try {
@@ -184,6 +208,12 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   logout: async () => {
+    // 1. Try to clear push token on server (fire and forget)
+    if (get().userId) {
+      pokeApi.clearPushToken().catch(err => console.warn('[SyncStore] Logout: Failed to clear push token on server:', err.message));
+    }
+
+    // 2. Clear local session
     await storage.deleteItem('refreshToken');
     setAccessToken(null);
     await Promise.all([
@@ -191,8 +221,9 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       AsyncStorage.removeItem(`${STORAGE_KEY}/alias`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/partners`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/lastSyncedAt`),
+      AsyncStorage.removeItem(`${STORAGE_KEY}/pushToken`),
     ]);
-    set({ userId: null, alias: null, partners: [], lastSyncedAt: 0 });
+    set({ userId: null, alias: null, partners: [], lastSyncedAt: 0, pushToken: null });
   },
 
   deleteAccount: async () => {
@@ -213,10 +244,17 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   registerPushToken: async (token: string) => {
+    const currentToken = get().pushToken;
+    if (currentToken === token) {
+      console.log('[SyncStore] Push token unchanged, skipping registration.');
+      return;
+    }
+
     set({ pushToken: token });
     try {
+      await AsyncStorage.setItem(`${STORAGE_KEY}/pushToken`, token);
       await pokeApi.savePushToken(token);
-      console.log('[SyncStore] Push token registered on server');
+      console.log('[SyncStore] Push token registered on server successfully.');
     } catch (err: any) {
       console.error('[SyncStore] Failed to register push token:', err.message);
     }
@@ -275,6 +313,30 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       );
       await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
       set({ partners, isSyncing: false });
+    } catch (err: any) {
+      set({ error: err.message, isSyncing: false });
+      throw err;
+    }
+  },
+
+  forgetPartner: async (partnerId, wipeHistory) => {
+    set({ isSyncing: true, error: null });
+    try {
+      if (wipeHistory) {
+        const contact = useContactsStore.getState().contacts.find(c => c.partner_user_id === partnerId);
+        if (contact) {
+          await useContactsStore.getState().removeContact(contact.id);
+          console.log(`[SyncStore] Local history wiped for partner: ${partnerId}`);
+        }
+      }
+
+      await authApi.forgetPartner(partnerId);
+      
+      const partners = get().partners.filter(p => p.id !== partnerId);
+      await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
+      set({ partners, isSyncing: false });
+      
+      console.log(`[SyncStore] Partner forgotten: ${partnerId}`);
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
       throw err;

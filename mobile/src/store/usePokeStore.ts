@@ -10,6 +10,7 @@ import { pokeApi } from "@/services/syncApi";
 import { Poke } from "@/types/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { create } from "zustand";
 import { useActivityStore } from "./useActivityStore";
 
@@ -118,20 +119,34 @@ export const usePokeStore = create<PokeState>((set, get) => ({
         const existingIds = new Set(state.receivedPokes.map((p) => p.id));
         const newPokes = res.pokes.filter((p) => !existingIds.has(p.id));
 
-        // If we found new pokes via polling, trigger a local notification for the most recent one
         if (newPokes.length > 0) {
           const latest = newPokes[0];
           const msg = POKE_MESSAGES.find((m) => m.key === latest.message);
 
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: `❤️ ${latest.senderAlias}`,
-              body: msg ? `${msg.emoji} ${latest.message}` : latest.message,
-              data: { pokeId: latest.id },
-              sound: "default",
-            },
-            trigger: null,
-          }).catch(console.error);
+          // Resolve translated message
+          const i18n = require('@/i18n').default;
+          const t = i18n.t.bind(i18n);
+          const translatedMsg = msg ? t(`poke.messages.${msg.key}`) : latest.message;
+
+          // Only notify if we are NOT the sender
+          const { userId } = require('./useSyncStore').useSyncStore.getState();
+          if (latest.senderId !== userId && Platform.OS !== 'web') {
+            Notifications.scheduleNotificationAsync({
+              content: {
+                title: t('notifications.pokeReceivedTitle', { name: latest.senderAlias }),
+                body: msg ? `${msg.emoji} ${translatedMsg}` : latest.message,
+                categoryIdentifier: 'POKE_CATEGORY',
+                data: { 
+                  pokeId: latest.id, 
+                  partnerId: latest.senderId,
+                  recipientId: userId,
+                  slots: currentSlots, // Include slots so buttons work in background
+                },
+                sound: "default",
+              },
+              trigger: null,
+            }).catch(console.error);
+          }
 
           // Log to activity store
           useActivityStore
@@ -140,16 +155,20 @@ export const usePokeStore = create<PokeState>((set, get) => ({
               id: latest.id,
               type: "poke",
               title: latest.senderAlias,
-              body: msg ? `${msg.emoji} ${latest.message}` : latest.message,
+              body: msg ? `${msg.emoji} ${translatedMsg}` : latest.message,
               timestamp: latest.sentAt,
               data: { pokeId: latest.id },
             })
             .catch(console.error);
         }
 
+        const maxSentAt = newPokes.length > 0 
+          ? Math.max(...newPokes.map(p => p.sentAt)) 
+          : state.lastPokeCheckedAt;
+
         return {
           receivedPokes: [...newPokes, ...state.receivedPokes],
-          lastPokeCheckedAt: Date.now(),
+          lastPokeCheckedAt: Math.max(maxSentAt, state.lastPokeCheckedAt),
         };
       });
     } catch (err: any) {
@@ -173,6 +192,8 @@ export const usePokeStore = create<PokeState>((set, get) => ({
     set({ slots });
 
     // Re-register the notification category and refresh the persistent notification
+    if (Platform.OS === 'web') return;
+
     try {
       await registerPokeCategory(slots, getLabel);
       await schedulePokeNotification(
