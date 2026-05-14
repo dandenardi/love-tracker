@@ -9,6 +9,7 @@ CREATE TABLE users (
   invite_code     TEXT UNIQUE,
   invite_plain    TEXT,
   invite_expires  BIGINT,
+  push_token      TEXT,
   created_at      BIGINT NOT NULL
 );
 
@@ -20,19 +21,43 @@ CREATE TABLE refresh_tokens (
   created_at  BIGINT NOT NULL
 );
 
+CREATE TABLE partnerships (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id_1   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id_2   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status      TEXT NOT NULL DEFAULT 'active',
+  created_at  BIGINT NOT NULL,
+  unpaired_at BIGINT,
+  UNIQUE(user_id_1, user_id_2)
+);
+
 CREATE TABLE events (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  client_id     TEXT NOT NULL,
-  type          TEXT NOT NULL,
-  title         TEXT,
-  note          TEXT,
-  intensity     INTEGER DEFAULT 0,
-  mood_tag      TEXT,
-  occurred_at   BIGINT NOT NULL,
-  logged_at     BIGINT NOT NULL,
-  deleted_at    BIGINT,
-  created_at    BIGINT NOT NULL
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id      TEXT NOT NULL,
+  partnership_id UUID REFERENCES partnerships(id) ON DELETE SET NULL,
+  type           TEXT NOT NULL,
+  title          TEXT,
+  note           TEXT,
+  intensity      INTEGER DEFAULT 0,
+  mood_tag       TEXT,
+  occurred_at    BIGINT NOT NULL,
+  logged_at      BIGINT NOT NULL,
+  deleted_at     BIGINT,
+  is_private     INTEGER NOT NULL DEFAULT 0,
+  created_at     BIGINT NOT NULL
+);
+
+CREATE TABLE pokes (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  recipient_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  partnership_id UUID REFERENCES partnerships(id) ON DELETE SET NULL,
+  message        TEXT NOT NULL,
+  emoji          TEXT NOT NULL,
+  sent_at        BIGINT NOT NULL,
+  delivered_at   BIGINT,
+  read_at        BIGINT
 );
 
 CREATE UNIQUE INDEX idx_events_user_client ON events(user_id, client_id);

@@ -78,17 +78,21 @@ love-tracker/
 
 ## Database Schema
 
-### Local (SQLite)
-```sql
--- POKES / PITICHES table
-CREATE TABLE pitches (
-  id              TEXT PRIMARY KEY,
-  event_id        TEXT REFERENCES events(id) ON DELETE CASCADE,
-  from_partner_id TEXT,
-  message         TEXT,
-  emoji           TEXT,
-  received_at     INTEGER NOT NULL,
-  read_at         INTEGER
+-- EVENTS table (Source of truth for Journal & Pokes)
+CREATE TABLE events (
+  id           TEXT PRIMARY KEY,
+  contact_id   TEXT REFERENCES contacts(id),
+  type         TEXT NOT NULL,
+  title        TEXT,
+  note         TEXT,
+  intensity    INTEGER DEFAULT 0,
+  mood_tag     TEXT,
+  occurred_at  INTEGER NOT NULL,
+  logged_at    INTEGER NOT NULL,
+  synced       INTEGER DEFAULT 0,
+  is_private   INTEGER DEFAULT 0,
+  delivered_at INTEGER, -- For POKEs
+  read_at      INTEGER  -- For POKEs
 );
 ```
 
@@ -96,6 +100,35 @@ CREATE TABLE pitches (
 ```sql
 -- Added column for Push Notifications
 ALTER TABLE users ADD COLUMN push_token TEXT;
+
+-- Partnerships table
+CREATE TABLE partnerships (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id_1   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id_2   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status      TEXT NOT NULL DEFAULT 'active',
+  created_at  BIGINT NOT NULL,
+  unpaired_at BIGINT,
+  UNIQUE(user_id_1, user_id_2)
+);
+
+-- Events table (Sync)
+CREATE TABLE events (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id      TEXT NOT NULL,
+  partnership_id UUID REFERENCES partnerships(id) ON DELETE SET NULL,
+  type           TEXT NOT NULL,
+  title          TEXT,
+  note           TEXT,
+  intensity      INTEGER DEFAULT 0,
+  mood_tag       TEXT,
+  occurred_at    BIGINT NOT NULL,
+  logged_at      BIGINT NOT NULL,
+  deleted_at     BIGINT,
+  is_private     INTEGER NOT NULL DEFAULT 0,
+  created_at     BIGINT NOT NULL
+);
 
 -- Quick interactions table
 CREATE TABLE pokes (
@@ -106,6 +139,7 @@ CREATE TABLE pokes (
   message        TEXT NOT NULL,
   emoji          TEXT NOT NULL,
   sent_at        BIGINT NOT NULL,
+  delivered_at   BIGINT,
   read_at        BIGINT
 );
 ```
@@ -115,12 +149,15 @@ CREATE TABLE pokes (
 ## Key Features
 
 - **Quick Poke**: Persistent notification in the system tray with 3 customizable slots. Send "Thinking of you", "I love you", etc., without opening the app.
+- **Poke Status Icons**: WhatsApp-style checkmarks (Sent, Delivered, Read) for all pokes in the Notification Center.
+- **Poke Ping-Pong**: Get notified when your partner receives your poke, with quick buttons to send another one back immediately.
+- **Action Feedback**: Instant confirmation notification when sending pokes from the system tray buttons.
 - **Respond Now**: Received pokes now show your 3 slots as buttons in the notification tray, allowing for instant replies.
 - **Definitive Break-up**: Option to permanently remove unpaired partners with a choice to wipe all local history associated with them.
 - **Push Notifications**: Receive instant alerts when your partner logs a new event (Shared events only).
 - **Privacy Lock**: 4-digit PIN or Biometrics (FaceID/Fingerprint) with configurable timeout.
 - **Partner Sync**: Real-time synchronization of shared events across devices.
-- **Notification Center**: A unified hub to track pokes, partner activities, and system alerts with unread badges.
+- **Notification Inbox vs. Timeline History**: A smart separation where the Notification Center acts as an "Inbox" (clearable, persistent state) while the Timeline serves as a permanent relationship journal, including all "Toques" (Pokes) exchanged.
 - **Offline-first**: Everything works without internet; sync happens automatically when back online.
 
 ---
@@ -147,6 +184,9 @@ CREATE TABLE pokes (
 - **Sync Stability**: Fixed duplicate partner contacts and improved WebSocket diagnostics.
 - **Google Sign-In**: Fully integrated and debugged for Android (Fixes "black screen" and DEVELOPER_ERROR).
 - **Notification Reliability**: Fixed background task registration, added response listeners, and implemented token persistence/cleanup. (Resolved critical 403 Permission Denied issues and EAS Project ID mapping).
+- **Poke Status & Delivery**: Implemented real-time delivery/read indicators (checks), tray feedback, and delivery notifications ("Poke Ping-Pong").
+- **Persistence & Inbox Logic**: Fixed duplicate notification bug by persisting sync state (`lastPokeCheckedAt`) and integrated "Toques" into the Timeline history for permanent record-keeping.
+- **Poke System 2.0 (Total Stability)**: Refactored state management to use SQLite as source of truth for Poke status. Implemented a 48h Status Reconciler to ensure read receipts are recovered even if sockets fail. Unified the Notification Inbox and Timeline history flows.
 
 ### Not Yet Started
 - Export / import data
@@ -159,6 +199,7 @@ CREATE TABLE pokes (
 
 ### General
 - `npm run server` (server dir)
+- `npm run db:reset` (server dir) - **Wipes and recreates PostgreSQL schema**
 
 ### Mobile (`mobile/`)
 - `npm run dev` - Starts the Metro bundler for **Development Client**.

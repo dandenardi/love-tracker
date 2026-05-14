@@ -12,7 +12,8 @@
     "add": "Adicionar",
     "done": "Concluído",
     "loading": "Carregando...",
-    "noData": "Nada aqui ainda"
+    "noData": "Nada aqui ainda",
+    "poke": "Toque"
   },
   "tabs": {
     "home": "Início",
@@ -171,14 +172,14 @@
     "getStarted": "Começar"
   },
   "poke": {
-    "sendTitle": "Enviar um Poke",
-    "sentSuccess": "Enviou {{emoji}} para {{name}}!",
-    "sectionTitle": "Cutucar",
+    "sendTitle": "Dar um Toque",
+    "sentSuccess": "Toque {{emoji}} enviado para {{name}}!",
+    "sectionTitle": "Dar um Toque",
     "sectionDesc": "Personalize os 3 botões de atalho mostrados na sua bandeja de notificações",
     "slotLabel": "Slot {{n}}",
-    "testButton": "Testar Cutucar (usa Slot 1)",
-    "testSent": "Cutucada enviada!",
-    "notifTitle": "Love Tracker — Cutucar",
+    "testButton": "Testar Toque (usa Slot 1)",
+    "testSent": "Toque enviado!",
+    "notifTitle": "Love Tracker — Dar um Toque",
     "notifBody": "Toque para enviar uma mensagem para {{name}}",
     "messages": {
       "thinking": "Pensando em você",
@@ -198,10 +199,16 @@
     "noNotifications": "Nenhuma notificação ainda",
     "clearAll": "Limpar Tudo",
     "markRead": "Marcar como lida",
-    "pokeReceived": "{{name}} te enviou um poke: {{emoji}}",
-    "pokeReceivedTitle": "❤️ {{name}} te cutucou!",
+    "pokeReceived": "{{name}} te deu um toque: {{emoji}}",
+    "pokeReceivedTitle": "❤️ {{name}} te deu um toque!",
     "pokeReceivedBody": "{{emoji}} {{message}}",
+    "pokeSentTitle": "Toque enviado! ❤️",
+    "pokeDelivered": "{{name}} recebeu seu toque!",
+    "pokeRead": "{{name}} leu seu toque!",
     "eventAdded": "{{name}} registrou um novo {{type}}",
+    "statusSent": "Enviado",
+    "statusDelivered": "Entregue",
+    "statusRead": "Lido",
     "today": "Hoje",
     "yesterday": "Ontem",
     "earlier": "Anterior"

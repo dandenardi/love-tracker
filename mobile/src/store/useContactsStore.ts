@@ -19,6 +19,7 @@ interface ContactsState {
   removeContact: (id: string) => Promise<void>;
   setActiveContact: (id: string) => void;
   activeContact: () => Contact | null;
+  getContactByPartnerId: (partnerId: string) => Contact | undefined;
   cleanupDuplicates: () => Promise<void>;
 }
 
@@ -74,6 +75,10 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
   activeContact: () => {
     const { contacts, activeContactId } = get();
     return contacts.find((c) => c.id === activeContactId) ?? null;
+  },
+  
+  getContactByPartnerId: (partnerId: string) => {
+    return get().contacts.find(c => c.partner_user_id === partnerId);
   },
 
   cleanupDuplicates: async () => {

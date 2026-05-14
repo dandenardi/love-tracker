@@ -16,6 +16,8 @@ import { ptBR } from 'date-fns/locale';
 import { useTheme } from '@/context/ThemeContext';
 import { useActivityStore, Activity } from '@/store/useActivityStore';
 import { EVENT_TYPE_MAP } from '@/constants/eventTypes';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSyncStore } from '@/store/useSyncStore';
 
 function safeFormat(timestamp: any, formatStr: string): string {
   try {
@@ -30,10 +32,16 @@ function safeFormat(timestamp: any, formatStr: string): string {
 function ActivityRow({ activity, onPress }: { activity: Activity; onPress: () => void }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const { userId } = useSyncStore();
 
   const isPoke = activity.type === 'poke';
   const isRead = !!activity.readAt;
+  const isSent = activity.senderId === userId;
+
+  if (isPoke) {
+    console.log(`[ActivityRow] Poke ${activity.id}: isSent=${isSent}, senderId=${activity.senderId}, userId=${userId}`);
+  }
 
   let body = activity.body;
   let icon = isPoke ? '💌' : '📝';
@@ -49,7 +57,11 @@ function ActivityRow({ activity, onPress }: { activity: Activity; onPress: () =>
       iconColor = et.color;
     }
   } else if (isPoke) {
-    body = t(`notifications.pokeReceived`, { name: activity.title, emoji: '' }).replace(': ', '') + ': ' + activity.body;
+    if (isSent) {
+      body = t('notifications.pokeSentTitle').replace('! ❤️', '') + ': ' + activity.body;
+    } else {
+      body = t(`notifications.pokeReceived`, { name: activity.title, emoji: '' }).replace(': ', '') + ': ' + activity.body;
+    }
   }
 
   return (
@@ -58,7 +70,7 @@ function ActivityRow({ activity, onPress }: { activity: Activity; onPress: () =>
       style={[
         styles.row,
         { backgroundColor: c.surface, borderBottomColor: c.border },
-        !isRead && { backgroundColor: c.primary + '08' }
+        !isRead && !isSent && { backgroundColor: c.primary + '08' }
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
@@ -67,15 +79,24 @@ function ActivityRow({ activity, onPress }: { activity: Activity; onPress: () =>
       <View style={{ flex: 1 }}>
         <View style={styles.rowTop}>
           <Text style={[styles.rowTitle, { color: c.text }]}>{activity.title}</Text>
-          <Text style={[styles.rowTime, { color: c.textMuted }]}>
-            {safeFormat(activity.timestamp, 'HH:mm')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={[styles.rowTime, { color: c.textMuted }]}>
+              {safeFormat(activity.timestamp, 'HH:mm')}
+            </Text>
+            {isPoke && isSent && (
+              <MaterialCommunityIcons
+                name={activity.pokeDeliveredAt ? "check-all" : "check"}
+                size={14}
+                color={activity.pokeReadAt ? "#34B7F1" : c.textMuted}
+              />
+            )}
+          </View>
         </View>
         <Text style={[styles.rowBody, { color: c.textSecondary }]} numberOfLines={2}>
           {body}
         </Text>
       </View>
-      {!isRead && <View style={[styles.unreadDot, { backgroundColor: c.primary }]} />}
+      {!isRead && !isSent && <View style={[styles.unreadDot, { backgroundColor: c.primary }]} />}
     </TouchableOpacity>
   );
 }
@@ -87,6 +108,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
 
   const { activities, markAsRead, markAllAsRead, clearAll, loadActivities } = useActivityStore();
+  const { userId } = useSyncStore();
 
   useEffect(() => {
     loadActivities();
@@ -109,14 +131,22 @@ export default function NotificationsScreen() {
 
   const renderSection = (title: string, data: Activity[]) => {
     if (data.length === 0) return null;
+    const pokeStore = require('@/store/usePokeStore').usePokeStore.getState();
+
     return (
       <View>
         <Text style={[styles.sectionTitle, { color: c.textMuted }]}>{title.toUpperCase()}</Text>
-        {data.map(item => (
+        {data.map((item, idx) => (
           <ActivityRow
-            key={item.id}
+            key={item.id || `act-${idx}`}
             activity={item}
-            onPress={() => markAsRead(item.id)}
+            onPress={() => {
+              markAsRead(item.id);
+              // If it's a RECEIVED poke, notify the server
+              if (item.type === 'poke' && item.senderId !== userId) {
+                pokeStore.markRead(item.id);
+              }
+            }}
           />
         ))}
       </View>
@@ -143,11 +173,11 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         <FlatList
-          data={['today', 'yesterday', 'earlier']}
+          data={(['today', 'yesterday', 'earlier'] as const).filter(k => groups[k].length > 0)}
           keyExtractor={item => item}
           renderItem={({ item }) => {
             const label = t(`notifications.${item}`);
-            return renderSection(label, (groups as any)[item]);
+            return renderSection(label, groups[item]);
           }}
           contentContainerStyle={styles.list}
         />

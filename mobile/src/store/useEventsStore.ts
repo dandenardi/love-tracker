@@ -23,6 +23,7 @@ interface EventsState {
   getMonthEvents: (contactId: string, year: number, month: number) => Promise<LoveEvent[]>;
   getDayEvents: (contactId: string, dateMs: number) => Promise<LoveEvent[]>;
   syncEvent: (event: LoveEvent) => Promise<void>;
+  updateEventStatus: (id: string, status: { delivered_at?: number; read_at?: number }) => Promise<void>;
   markContactEventsAsSynced: (contactId: string) => Promise<void>;
 }
 
@@ -101,6 +102,13 @@ export const useEventsStore = create<EventsState>((set, get) => ({
         events: [event, ...s.events].sort((a, b) => b.occurred_at - a.occurred_at),
       };
     });
+  },
+
+  updateEventStatus: async (id, status) => {
+    await updateEvent(id, status);
+    set((s) => ({
+      events: s.events.map((e) => (e.id === id ? { ...e, ...status } : e)),
+    }));
   },
 
   markContactEventsAsSynced: async (contactId) => {

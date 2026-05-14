@@ -13,8 +13,8 @@ router.use(authenticateToken);
  */
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    await PokeService.sendPoke(req.user!.id, req.body);
-    res.json({ status: 'ok' });
+    const id = await PokeService.sendPoke(req.user!.id, req.body);
+    res.json({ status: 'ok', id });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
   }
@@ -29,6 +29,19 @@ router.get('/', async (req: AuthRequest, res) => {
     const since = Number(req.query.since) || 0;
     const pokes = await PokeService.getPokes(req.user!.id, since);
     res.json({ pokes });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * PATCH /poke/:pokeId/delivered
+ * Marks a poke as delivered.
+ */
+router.patch('/:pokeId/delivered', async (req: AuthRequest, res) => {
+  try {
+    await PokeService.markDelivered(req.user!.id, req.params.pokeId);
+    res.json({ status: 'ok' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

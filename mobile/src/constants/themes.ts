@@ -25,6 +25,7 @@ export interface Theme {
   name: string;
   emoji: string;
   colors: ThemeColors;
+  dark: boolean;
 }
 
 const base = {
@@ -53,6 +54,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#E85D75',
       tabBarInactive: '#7A5060',
     },
+    dark: true,
   },
   darkEmber: {
     key: 'darkEmber', name: 'Dark Ember', emoji: '🔥',
@@ -73,6 +75,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#F4A261',
       tabBarInactive: '#6B5D50',
     },
+    dark: true,
   },
   ocean: {
     key: 'ocean', name: 'Ocean', emoji: '🌊',
@@ -93,6 +96,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#4ECDC4',
       tabBarInactive: '#446070',
     },
+    dark: true,
   },
   forest: {
     key: 'forest', name: 'Forest', emoji: '🌿',
@@ -113,6 +117,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#74B49B',
       tabBarInactive: '#4A6652',
     },
+    dark: true,
   },
   midnight: {
     key: 'midnight', name: 'Midnight', emoji: '🌙',
@@ -133,6 +138,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#A855F7',
       tabBarInactive: '#5A4E7A',
     },
+    dark: true,
   },
   minimal: {
     key: 'minimal', name: 'Minimal', emoji: '⬛',
@@ -153,6 +159,7 @@ export const THEMES: Record<ThemeKey, Theme> = {
       tabBarActive:   '#F0F0F0',
       tabBarInactive: '#555555',
     },
+    dark: true,
   },
 };
 

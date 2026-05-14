@@ -8,7 +8,7 @@ export class PokeService {
    * Send a poke from one user to a partner.
    * Validates active partnership, persists the poke, then fires push notification.
    */
-  static async sendPoke(senderId: string, payload: PokePayload): Promise<void> {
+  static async sendPoke(senderId: string, payload: PokePayload): Promise<string> {
     const { partnerId, message, emoji } = payload;
 
     // 1. Validate active partnership exists between the two users
@@ -30,11 +30,13 @@ export class PokeService {
     const sentAt = Date.now();
 
     // 2. Insert poke record
-    await pool.query(
+    const insertResult = await pool.query(
       `INSERT INTO pokes (sender_id, recipient_id, partnership_id, message, emoji, sent_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
       [senderId, partnerId, partnershipId, message, emoji, sentAt]
     );
+    const pokeId = insertResult.rows[0].id;
 
     // 3. Fetch sender alias and recipient push token
     const [senderResult, recipientResult] = await Promise.all([
@@ -50,22 +52,23 @@ export class PokeService {
       await sendExpoPushNotification(
         recipientToken,
         senderAlias,
-        `${emoji} ${senderAlias} te enviou um poke!`, // Generic localized-ish body
-        { type: 'poke', senderId, recipientId: partnerId, partnerId: senderId, message, emoji },
+        `${emoji} ${senderAlias} sent you a poke!`,
+        { type: 'poke', pokeId, senderId, recipientId: partnerId, partnerId: senderId, message, emoji },
         'POKE_CATEGORY'
       );
-    } else {
-      console.warn('[PokeService] Recipient has no push token, skipping notification');
     }
 
     // 5. Emit real-time socket event (fire-and-forget)
     socketManager.emitToUser(partnerId, 'new_poke', {
+      id: pokeId,
       senderId,
       senderAlias,
       message,
       emoji,
       sentAt,
     });
+
+    return pokeId;
   }
 
   /**
@@ -74,10 +77,10 @@ export class PokeService {
   static async getPokes(userId: string, since: number): Promise<Poke[]> {
     const result = await pool.query(
       `SELECT pk.id, pk.sender_id, u.alias as sender_alias,
-              pk.message, pk.emoji, pk.sent_at, pk.read_at
+              pk.message, pk.emoji, pk.sent_at, pk.delivered_at, pk.read_at
        FROM pokes pk
        JOIN users u ON u.id = pk.sender_id
-       WHERE pk.recipient_id = $1 AND pk.sent_at > $2
+       WHERE (pk.recipient_id = $1 OR pk.sender_id = $1) AND pk.sent_at > $2
        ORDER BY pk.sent_at DESC
        LIMIT 50`,
       [userId, since]
@@ -90,17 +93,77 @@ export class PokeService {
       message: row.message,
       emoji: row.emoji,
       sentAt: Number(row.sent_at),
+      deliveredAt: row.delivered_at ? Number(row.delivered_at) : undefined,
       readAt: row.read_at ? Number(row.read_at) : undefined,
     }));
+  }
+
+  /**
+   * Mark a poke as delivered.
+   */
+  static async markDelivered(userId: string, pokeId: string): Promise<void> {
+    const now = Date.now();
+    const result = await pool.query(
+      `UPDATE pokes 
+       SET delivered_at = COALESCE(delivered_at, $1) 
+       WHERE id = $2 AND recipient_id = $3
+       RETURNING sender_id, delivered_at`,
+      [now, pokeId, userId]
+    );
+
+    if (result.rows.length > 0) {
+      const { sender_id, delivered_at } = result.rows[0];
+      
+      // If we just set it (it was null), notify the sender
+      if (Number(delivered_at) === now) {
+        socketManager.emitToUser(sender_id, 'poke_status_updated', {
+          pokeId,
+          deliveredAt: now,
+        });
+
+        // Send push notification to sender: "Partner received your poke!"
+        const [recipientResult, senderResult] = await Promise.all([
+          pool.query('SELECT alias FROM users WHERE id = $1', [userId]),
+          pool.query('SELECT push_token FROM users WHERE id = $1', [sender_id]),
+        ]);
+
+        const recipientAlias = recipientResult.rows[0]?.alias || 'Your partner';
+        const senderToken = senderResult.rows[0]?.push_token;
+
+        if (senderToken) {
+          await sendExpoPushNotification(
+            senderToken,
+            recipientAlias,
+            `${recipientAlias} just received your poke! Want to reply?`,
+            { type: 'poke_delivered', pokeId, partnerId: userId, partnerName: recipientAlias },
+            'POKE_CATEGORY'
+          );
+        }
+      }
+    }
   }
 
   /**
    * Mark a poke as read.
    */
   static async markRead(userId: string, pokeId: string): Promise<void> {
-    await pool.query(
-      'UPDATE pokes SET read_at = $1 WHERE id = $2 AND recipient_id = $3',
-      [Date.now(), pokeId, userId]
+    const now = Date.now();
+    const result = await pool.query(
+      `UPDATE pokes 
+       SET read_at = COALESCE(read_at, $1),
+           delivered_at = COALESCE(delivered_at, $1)
+       WHERE id = $2 AND recipient_id = $3
+       RETURNING sender_id`,
+      [now, pokeId, userId]
     );
+
+    if (result.rows.length > 0) {
+      const senderId = result.rows[0].sender_id;
+      socketManager.emitToUser(senderId, 'poke_status_updated', {
+        pokeId,
+        readAt: now,
+        deliveredAt: now,
+      });
+    }
   }
 }

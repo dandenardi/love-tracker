@@ -86,24 +86,39 @@ function RecentEventRow({ event }: { event: any }) {
   const c = theme.colors;
   const cfg = EVENT_TYPE_MAP[event.type as keyof typeof EVENT_TYPE_MAP];
   const { t } = useTranslation();
+  const isPoke = event.type === 'POKE';
+
   return (
-    <View style={[styles.recentRow, { backgroundColor: c.surface, borderColor: c.border }]}>
-      <View style={[styles.recentIconWrap, { backgroundColor: cfg?.bgColor ?? c.surfaceAlt }]}>
-        <Text style={{ fontSize: 18 }}>{cfg?.icon ?? '📝'}</Text>
+    <View style={[
+      styles.recentRow, 
+      { backgroundColor: c.surface, borderColor: c.border },
+      isPoke && { borderStyle: 'dashed', borderColor: (cfg?.color ?? c.border) + '66' }
+    ]}>
+      <View style={[styles.recentIconWrap, { backgroundColor: (cfg?.color ?? c.primary) + '22' }]}>
+        <Text style={{ fontSize: 18 }}>
+          {isPoke ? (event.note?.split(' ')[0] || '👉') : (cfg?.icon ?? '📝')}
+        </Text>
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.recentType, { color: cfg?.color ?? c.text }]}>
-          {t(cfg?.labelKey ?? 'events.custom')}
+          {isPoke ? event.title : t(cfg?.labelKey ?? 'events.custom')}
         </Text>
         {event.note ? (
-          <Text style={[styles.recentNote, { color: c.textSecondary }]} numberOfLines={1}>
-            {event.note}
+          <Text style={[styles.recentNote, { color: c.textSecondary, fontWeight: isPoke ? '600' : '400' }]} numberOfLines={1}>
+            {isPoke ? event.note.substring(event.note.indexOf(' ') + 1) : event.note}
           </Text>
         ) : null}
       </View>
-      <Text style={[styles.recentTime, { color: c.textMuted }]}>
-        {format(new Date(event.occurred_at), 'HH:mm')}
-      </Text>
+      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+        <Text style={[styles.recentTime, { color: c.textMuted }]}>
+          {format(new Date(event.occurred_at), 'HH:mm')}
+        </Text>
+        {isPoke && (
+          <Text style={{ fontSize: 8, color: cfg?.color, fontWeight: '800', textTransform: 'uppercase' }}>
+            {t('common.poke')}
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -287,7 +302,7 @@ export default function HomeScreen() {
               {recentEvents.length === 0 ? (
                 <Text style={[styles.emptyText, { color: c.textMuted }]}>{t('home.noRecentEvents')}</Text>
               ) : (
-                recentEvents.map((e) => <RecentEventRow key={e.id} event={e} />)
+                recentEvents.map((e, idx) => <RecentEventRow key={e.id || `recent-${idx}`} event={e} />)
               )}
             </View>
           </>

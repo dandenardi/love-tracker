@@ -18,8 +18,8 @@ export async function createEvent(
     is_private: payload.is_private ?? 0,
   };
   await db.runAsync(
-    `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private, delivered_at, read_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       event.id,
       event.contact_id,
@@ -32,6 +32,8 @@ export async function createEvent(
       event.logged_at,
       event.synced,
       event.is_private,
+      event.delivered_at ?? null,
+      event.read_at ?? null,
     ]
   );
   return event;
@@ -41,8 +43,8 @@ export async function createEvent(
 export async function upsertEvent(event: LoveEvent): Promise<void> {
   const db = getDb();
   await db.runAsync(
-    `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO events (id, contact_id, type, title, note, intensity, mood_tag, occurred_at, logged_at, synced, is_private, delivered_at, read_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        type = EXCLUDED.type,
        title = EXCLUDED.title,
@@ -51,7 +53,9 @@ export async function upsertEvent(event: LoveEvent): Promise<void> {
        mood_tag = EXCLUDED.mood_tag,
        occurred_at = EXCLUDED.occurred_at,
        logged_at = EXCLUDED.logged_at,
-       synced = EXCLUDED.synced`,
+       synced = EXCLUDED.synced,
+       delivered_at = EXCLUDED.delivered_at,
+       read_at = EXCLUDED.read_at`,
     [
       event.id,
       event.contact_id,
@@ -63,7 +67,9 @@ export async function upsertEvent(event: LoveEvent): Promise<void> {
       event.occurred_at,
       event.logged_at,
       event.synced,
-      event.is_private,
+      event.is_private ?? 0,
+      event.delivered_at ?? null,
+      event.read_at ?? null,
     ]
   );
 }

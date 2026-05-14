@@ -63,6 +63,22 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       useSyncStore.getState().sync().catch(console.error);
     });
 
+    socket.on('poke_status_updated', (data: { pokeId: string, deliveredAt?: number, readAt?: number }) => {
+      console.log('[SocketStore] Real-time event: poke_status_updated', data);
+      const { updateActivity } = require('./useActivityStore').useActivityStore.getState();
+      updateActivity(data.pokeId, { 
+        pokeDeliveredAt: data.deliveredAt || null, 
+        pokeReadAt: data.readAt || null 
+      }).catch(console.error);
+
+      // Update SQLite
+      const { updateEventStatus } = require('./useEventsStore').useEventsStore.getState();
+      updateEventStatus(data.pokeId, {
+        delivered_at: data.deliveredAt || undefined,
+        read_at: data.readAt || undefined
+      }).catch(console.error);
+    });
+
     set({ socket });
   },
 

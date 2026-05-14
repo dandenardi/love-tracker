@@ -143,11 +143,11 @@ export default function CalendarScreen() {
               {dayEvents.length === 0 ? (
                 <Text style={[styles.emptyText, { color: c.textMuted }]}>{t('calendar.noEvents')}</Text>
               ) : (
-                dayEvents.map((ev) => {
+                dayEvents.map((ev, idx) => {
                   const cfg = EVENT_TYPE_MAP[ev.type as keyof typeof EVENT_TYPE_MAP];
                   return (
                     <TouchableOpacity
-                      key={ev.id}
+                      key={ev.id || `cal-ev-${idx}`}
                       onPress={() => {
                         setShowDayModal(false);
                         router.push({ pathname: '/modal/event-detail', params: { id: ev.id } });

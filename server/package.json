@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc --build",
-    "dev": "ts-node-dev --respawn index.ts"
+    "dev": "ts-node-dev --respawn index.ts",
+    "db:reset": "ts-node db/reset.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^3.0.0",

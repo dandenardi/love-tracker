@@ -79,24 +79,43 @@ export default function TimelineScreen() {
 
   const renderItem = ({ item: ev }: { item: LoveEvent }) => {
     const cfg = EVENT_TYPE_MAP[ev.type as keyof typeof EVENT_TYPE_MAP];
+    const isPoke = ev.type === 'POKE';
+    
     return (
       <TouchableOpacity
-        onPress={() => router.push({ pathname: '/modal/event-detail', params: { id: ev.id } })}
+        onPress={() => !isPoke && router.push({ pathname: '/modal/event-detail', params: { id: ev.id } })}
         onLongPress={() => handleDelete(ev.id)}
-        style={[styles.card, { backgroundColor: cfg?.bgColor ?? c.surface, borderColor: (cfg?.color ?? c.border) + '44' }]}
-        activeOpacity={0.85}
+        style={[
+          styles.card, 
+          { backgroundColor: cfg?.bgColor ?? c.surface, borderColor: (cfg?.color ?? c.border) + '44' },
+          isPoke && { borderStyle: 'dashed' }
+        ]}
+        activeOpacity={isPoke ? 1 : 0.85}
       >
         <View style={[styles.iconWrap, { backgroundColor: cfg?.color + '22' }]}>
-          <Text style={{ fontSize: 24 }}>{cfg?.icon ?? '📝'}</Text>
+          <Text style={{ fontSize: 24 }}>{isPoke ? (ev.note?.split(' ')[0] || '👉') : (cfg?.icon ?? '📝')}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardType, { color: cfg?.color ?? c.text }]}>{t(cfg?.labelKey ?? 'events.custom')}</Text>
-          {ev.title && <Text style={[styles.cardNote, { color: c.text }]}>{ev.title}</Text>}
-          {ev.note && <Text style={[styles.cardNote, { color: c.textSecondary }]}>{ev.note}</Text>}
+          <Text style={[styles.cardType, { color: cfg?.color ?? c.text }]}>
+            {isPoke ? ev.title : t(cfg?.labelKey ?? 'events.custom')}
+          </Text>
+          {ev.note && (
+            <Text style={[styles.cardNote, { color: c.text, fontWeight: isPoke ? '600' : '400' }]}>
+              {isPoke ? ev.note.substring(ev.note.indexOf(' ') + 1) : ev.note}
+            </Text>
+          )}
+          {!isPoke && ev.title && <Text style={[styles.cardNote, { color: c.textSecondary }]}>{ev.title}</Text>}
           {ev.mood_tag && <Text style={styles.moodTag}>{ev.mood_tag}</Text>}
           {ev.intensity > 0 && <IntensityDots value={ev.intensity} color={cfg?.color ?? c.primary} />}
         </View>
-        <Text style={[styles.cardTime, { color: c.textMuted }]}>{format(new Date(ev.occurred_at), 'HH:mm')}</Text>
+        <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <Text style={[styles.cardTime, { color: c.textMuted }]}>{format(new Date(ev.occurred_at), 'HH:mm')}</Text>
+          {isPoke && (
+             <View style={[styles.pokeBadge, { backgroundColor: cfg?.color + '22' }]}>
+               <Text style={[styles.pokeBadgeText, { color: cfg?.color }]}>{t('common.poke')}</Text>
+             </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -104,7 +123,11 @@ export default function TimelineScreen() {
   const renderGroup = ({ item }: { item: { key: string; label: string; data: LoveEvent[] } }) => (
     <View>
       <Text style={[styles.dateLabel, { color: c.textMuted }]}>{item.label.toUpperCase()}</Text>
-      {item.data.map((ev) => <View key={ev.id}>{renderItem({ item: ev })}</View>)}
+      {item.data.map((ev, idx) => (
+        <View key={ev.id || `ev-${item.key}-${idx}`}>
+          {renderItem({ item: ev })}
+        </View>
+      ))}
     </View>
   );
 
@@ -147,4 +170,14 @@ const styles = StyleSheet.create({
   cardTime: { fontSize: 12, marginTop: 2 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   emptyText: { fontSize: 15, textAlign: 'center' },
+  pokeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  pokeBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
 });

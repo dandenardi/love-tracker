@@ -11,7 +11,8 @@
     "add": "Add",
     "done": "Done",
     "loading": "Loading...",
-    "noData": "Nothing here yet"
+    "noData": "Nothing here yet",
+    "poke": "Poke"
   },
   "tabs": {
     "home": "Home",
@@ -200,7 +201,13 @@
     "pokeReceived": "{{name}} sent you a poke: {{emoji}}",
     "pokeReceivedTitle": "❤️ {{name}} poked you!",
     "pokeReceivedBody": "{{emoji}} {{message}}",
+    "pokeSentTitle": "Poke sent! ❤️",
+    "pokeDelivered": "{{name}} received your poke!",
+    "pokeRead": "{{name}} read your poke!",
     "eventAdded": "{{name}} logged a new {{type}}",
+    "statusSent": "Sent",
+    "statusDelivered": "Delivered",
+    "statusRead": "Read",
     "today": "Today",
     "yesterday": "Yesterday",
     "earlier": "Earlier"

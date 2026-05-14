@@ -15,6 +15,7 @@ import { useContactsStore } from '@/store/useContactsStore';
 import { usePokeStore } from '@/store/usePokeStore';
 import { PokeMessage, schedulePokeNotification, registerPokeCategory } from '@/services/notificationService';
 import { setLanguage } from '@/i18n';
+import { performFactoryReset } from '@/services/factoryReset';
 
 function SectionHeader({ label }: { label: string }) {
   const { theme } = useTheme();
@@ -642,6 +643,43 @@ function SettingsScreen() {
             </TouchableOpacity>
           </SettingRow>
         </View>
+
+        {/* ── Debug (Development Only) ── */}
+        {__DEV__ && (
+          <>
+            <SectionHeader label="Debug / Development" />
+            <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
+              <SettingRow label="Factory Reset" desc="Wipes everything (SQLite, Storage, SecureStore). Use with caution." last>
+                <TouchableOpacity 
+                  onPress={() => {
+                    Alert.alert(
+                      "Factory Reset",
+                      "This will permanently delete ALL data and log you out. Proceed?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { 
+                          text: "Yes, Reset Everything", 
+                          style: "destructive",
+                          onPress: async () => {
+                            const success = await performFactoryReset();
+                            if (success) {
+                              Alert.alert("Reset Complete", "The app data has been wiped. Please reload the app.");
+                            } else {
+                              Alert.alert("Error", "Reset failed.");
+                            }
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                  style={[styles.chip, { borderColor: c.error, backgroundColor: c.error + '15' }]}
+                >
+                  <Text style={{ color: c.error, fontSize: 12, fontWeight: '600' }}>RESET</Text>
+                </TouchableOpacity>
+              </SettingRow>
+            </View>
+          </>
+        )}
 
         <Text style={[styles.version, { color: c.textMuted }]}>
           {t('settings.versionDisplay', { version: Constants.expoConfig?.version || '1.0.0' })}

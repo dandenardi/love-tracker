@@ -7,6 +7,7 @@ export type EventTypeKey =
   | 'DATE'
   | 'SPECIAL'
   | 'MILESTONE'
+  | 'POKE'
   | 'CUSTOM';
 
 export interface LoveEvent {
@@ -23,6 +24,8 @@ export interface LoveEvent {
   server_id?: string;
   /** 1 = private (never synced to partner), 0 = shared */
   is_private: number;
+  delivered_at?: number;
+  read_at?: number;
 }
 
 export interface Contact {
@@ -128,6 +131,7 @@ export interface Poke {
   message: string;
   emoji: string;
   sentAt: number;
+  deliveredAt?: number;
   readAt?: number;
 }
 

@@ -210,7 +210,7 @@ export const pokeApi = {
 
   /** Send a poke to a partner */
   send: (payload: PokePayload) =>
-    request<{ status: string }>('/poke', {
+    request<{ status: string, id: string }>('/poke', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -219,6 +219,12 @@ export const pokeApi = {
   list: (since: number) =>
     request<PokesResponse>(`/poke?since=${since}`, {
       method: 'GET',
+    }),
+
+  /** Mark a single poke as delivered */
+  markDelivered: (pokeId: string) =>
+    request<{ status: string }>(`/poke/${pokeId}/delivered`, {
+      method: 'PATCH',
     }),
 
   /** Mark a single poke as read */

@@ -131,6 +131,16 @@ export function definePokeBackgroundTask(): void {
             emoji: slot.emoji,
           });
 
+          // Show feedback notification
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '❤️',
+              body: slot.emoji + ' ' + actionId, // Ideally translated, but this is a background task
+              sound: 'default',
+            },
+            trigger: null,
+          });
+
           console.log('[PokeTask] Background poke sent successfully');
         } catch (err: any) {
           console.error('[PokeTask] Failed to send background poke:', err.message);
@@ -198,6 +208,17 @@ export function setupNotificationListeners(): () => void {
         message: actionId,
         emoji: slot.emoji,
       });
+
+      // Show feedback notification
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '❤️',
+          body: slot.emoji + ' ' + actionId,
+          sound: 'default',
+        },
+        trigger: null,
+      });
+
       console.log('[Notifications] Poke sent successfully from listener');
     } catch (err: any) {
       console.error('[Notifications] Failed to send poke from listener:', err.message);

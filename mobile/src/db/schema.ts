@@ -9,6 +9,22 @@ export function getDb(): SQLite.SQLiteDatabase {
   return _db;
 }
 
+export async function resetDatabase(): Promise<void> {
+  const db = getDb();
+  console.log('🗑️ Resetting mobile database...');
+  
+  await db.execAsync(`
+    PRAGMA foreign_keys = OFF;
+    DROP TABLE IF EXISTS pitches;
+    DROP TABLE IF EXISTS events;
+    DROP TABLE IF EXISTS contacts;
+    PRAGMA foreign_keys = ON;
+  `);
+
+  // Re-initialize (creates tables again)
+  await initDatabase();
+}
+
 export async function initDatabase(): Promise<void> {
   if (!_db) {
     _db = await SQLite.openDatabaseAsync('love_tracker.db');
@@ -74,6 +90,22 @@ export async function initDatabase(): Promise<void> {
   try {
     await db.execAsync(
       `ALTER TABLE contacts ADD COLUMN last_pulled_at INTEGER DEFAULT 0;`
+    );
+  } catch {
+    // Column already exists
+  }
+
+  try {
+    await db.execAsync(
+      `ALTER TABLE events ADD COLUMN delivered_at INTEGER;`
+    );
+  } catch {
+    // Column already exists
+  }
+
+  try {
+    await db.execAsync(
+      `ALTER TABLE events ADD COLUMN read_at INTEGER;`
     );
   } catch {
     // Column already exists
