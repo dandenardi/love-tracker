@@ -2,7 +2,7 @@
   "expo": {
     "name": "Love Tracker",
     "slug": "love-tracker",
-    "version": "1.0.2",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lovetracker",
@@ -25,8 +25,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.dandenardi.lovetracker",
-      "googleServicesFile": "./google-services.json",
-      "versionCode": 4
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

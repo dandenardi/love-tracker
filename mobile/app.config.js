@@ -3,8 +3,15 @@ import { withProjectBuildGradle, withAppBuildGradle } from "@expo/config-plugins
 
 /** @type {import('expo/config').ExpoConfig} */
 const config = ({ config }) => {
+  // Dynamic versioning: base version from app.json + build number (versionCode)
+  // During EAS build, EAS_BUILD_NUMBER is the build number (incremented automatically)
+  const baseVersion = config.version.split('.').slice(0, 2).join('.') || '1.0';
+  const buildNumber = process.env.EAS_BUILD_NUMBER || '0';
+  const dynamicVersion = `${baseVersion}.${buildNumber}`;
+
   return {
     ...config,
+    version: dynamicVersion,
     android: {
       ...config.android,
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
