@@ -17,7 +17,6 @@ interface ExpoPushMessage {
   priority?: 'default' | 'normal' | 'high';
   categoryIdentifier?: string;
   channelId?: string;
-  _displayInForeground?: boolean;
 }
 
 interface ExpoPushTicket {
@@ -49,7 +48,6 @@ export async function sendExpoPushNotification(
     priority: 'high',
     channelId: 'love-tracker',
     categoryIdentifier,
-    _displayInForeground: true,
   };
 
   try {

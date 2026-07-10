@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last Updated: May 5, 2026**
+**Last Updated: July 7, 2026**
 
 This Privacy Policy describes how **Love Tracker** ("we", "our", or "the App") handles your information. Your privacy is our priority, and we design the App to be as private as possible.
 
@@ -12,8 +12,11 @@ The App does not require a traditional account (email/password) unless you choos
 - **Push Notifications:** We collect your device's push token to send alerts when your partner logs a shared event.
 
 ### b. Relationship Data (Events)
-- **Private Events:** Any event you mark as "Private" is stored **locally on your device only**. We never upload private events to our servers.
-- **Shared Events:** If you use the Sync feature and mark an event as "Shared", the event details (type, date, notes, intensity, mood) are encrypted and stored on our server so they can be synced to your partner's device.
+- **Private Events & Solo Diary Entries:** Any event you mark as "Private", and any Solo Diary entry not linked to a Contact, is backed up to our servers **for your own account recovery only** (e.g. if you lose or replace your device). These entries are tied exclusively to your user ID and are **never shared with, or made visible to, a partner** — this is enforced at the database query level, not just in the app's interface.
+- **Shared Events:** If you use the Sync feature and mark an event as "Shared", the event details (type, date, notes, intensity, mood) are stored on our server so they can be synced to your partner's device.
+
+### c. AI Insights (Optional)
+If you explicitly opt in to **AI Insights**, structured details of your logged events (event type, intensity, mood, and relative timing) are sent to **Anthropic** (maker of Claude) to generate a pattern-based insight. Your free-text notes are **never** included in this data by default. AI Insights are generated only after your explicit consent, are scoped entirely to your own account, and — for paired users — never include a partner's private events. You can disable AI Insights at any time; disabling it stops all future data sharing with Anthropic for this purpose.
 
 ## 2. Biometrics and Security
 The App offers a Biometric Lock (Fingerprint or FaceID). 
@@ -27,6 +30,7 @@ The App offers a Biometric Lock (Fingerprint or FaceID).
 We may use the following third-party services which collect data according to their own policies:
 - **Google Play Services:** For App distribution and core Android functionality.
 - **Expo:** For delivering push notifications.
+- **Anthropic:** Only if you opt in to AI Insights — processes structured event data to generate insights, as described in Section 1c.
 
 ## 5. Data and Account Deletion
 

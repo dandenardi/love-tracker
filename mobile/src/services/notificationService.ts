@@ -49,8 +49,14 @@ export const DEFAULT_SLOTS: [PokeMessage, PokeMessage, PokeMessage] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PokeMessage {
-  key: string;   // i18n key under poke.messages.*
+  key: string;        // i18n key under poke.messages.*, or 'custom' for user-created pokes
   emoji: string;
+  customLabel?: string; // set when key === 'custom'; the user's free-text message
+}
+
+/** Returns the display label for a poke message, preferring customLabel over i18n lookup. */
+export function getPokeLabel(msg: PokeMessage, t: (key: string) => string): string {
+  return msg.customLabel ?? t(`poke.messages.${msg.key}`);
 }
 
 export interface PokeNotificationContext {
@@ -102,7 +108,11 @@ export function definePokeBackgroundTask(): void {
           };
 
           if (!notifData?.partnerId) return;
-          
+
+          // Action IDs are 'poke_slot_0', 'poke_slot_1', 'poke_slot_2'
+          const slotIdx = parseInt(actionId.replace('poke_slot_', ''), 10);
+          if (isNaN(slotIdx) || slotIdx < 0 || slotIdx > 2) return;
+
           let slots = notifData.slots;
           if (!slots) {
             // If slots are missing (e.g. from a remote push), try to load them from storage
@@ -120,14 +130,15 @@ export function definePokeBackgroundTask(): void {
 
           if (!slots) return;
 
-          const slot = slots.find(s => s.key === actionId);
+          const slot = slots[slotIdx];
           if (!slot) return;
 
-          console.log('[PokeTask] Background response detected. Sending poke:', actionId, 'to partner:', notifData.partnerId);
+          const message = slot.customLabel ?? slot.key;
+          console.log('[PokeTask] Background response detected. Sending poke:', message, 'to partner:', notifData.partnerId);
 
           await pokeApi.send({
             partnerId: notifData.partnerId,
-            message: actionId,
+            message,
             emoji: slot.emoji,
           });
 
@@ -135,7 +146,7 @@ export function definePokeBackgroundTask(): void {
           await Notifications.scheduleNotificationAsync({
             content: {
               title: '❤️',
-              body: slot.emoji + ' ' + actionId, // Ideally translated, but this is a background task
+              body: `${slot.emoji} ${message}`,
               sound: 'default',
             },
             trigger: null,
@@ -148,14 +159,35 @@ export function definePokeBackgroundTask(): void {
       }
     );
 
-    // 2. IMPORTANT: Register the task with the notifications system.
-    // This was missing and is critical for the task to be triggered when app is killed.
-    Notifications.registerTaskAsync(POKE_BACKGROUND_TASK)
-      .then(() => console.log('[Notifications] Background task registered successfully:', POKE_BACKGROUND_TASK))
-      .catch((err: any) => console.error('[Notifications] Failed to register background task:', err));
-
   } catch (err) {
-    console.error('[Notifications] Failed to define/register background task:', err);
+    console.error('[Notifications] Failed to define background task:', err);
+  }
+}
+
+/**
+ * Register the background task with the notifications system.
+ * Must be called inside a useEffect via InteractionManager (NOT at module scope)
+ * — on Android the native SharedPreferences store isn't ready until after the
+ * first render cycle completes and all interactions have settled.
+ */
+export async function registerPokeBackgroundTask(): Promise<void> {
+  if (isExpoGo || Platform.OS === 'web') return;
+  try {
+    const TaskManager = require('expo-task-manager');
+    const Notifications = require('expo-notifications');
+
+    // Skip if already registered — re-registering on Android triggers a
+    // NullPointerException in ExpoBackgroundNotificationTasksModule.
+    const isRegistered = await TaskManager.isTaskRegisteredAsync(POKE_BACKGROUND_TASK);
+    if (isRegistered) {
+      console.log('[Notifications] Background task already registered, skipping.');
+      return;
+    }
+
+    await Notifications.registerTaskAsync(POKE_BACKGROUND_TASK);
+    console.log('[Notifications] Background task registered successfully:', POKE_BACKGROUND_TASK);
+  } catch (err: any) {
+    console.error('[Notifications] Failed to register background task:', err);
   }
 }
 
@@ -169,11 +201,20 @@ export function setupNotificationListeners(): () => void {
 
   const subscription = Notifications.addNotificationResponseReceivedListener(async (response: any) => {
     const actionId = response.actionIdentifier;
-    
-    // Ignore default actions (tapping the notification itself)
+
+    // Tapping the notification body brings the app to foreground — use it to refresh pokes.
+    if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      try {
+        const pokeStore = require('../store/usePokeStore').usePokeStore.getState();
+        pokeStore.loadPokes(pokeStore.lastPokeCheckedAt).catch(console.error);
+      } catch (e) {
+        console.error('[Notifications] Failed to trigger loadPokes on notification tap:', e);
+      }
+      return;
+    }
+
     if (
       !actionId ||
-      actionId === Notifications.DEFAULT_ACTION_IDENTIFIER ||
       actionId === 'com.apple.UNNotificationDismissActionIdentifier'
     ) {
       return;
@@ -181,6 +222,10 @@ export function setupNotificationListeners(): () => void {
 
     const data = response.notification?.request?.content?.data;
     if (!data?.partnerId) return;
+
+    // Action IDs are 'poke_slot_0', 'poke_slot_1', 'poke_slot_2'
+    const slotIdx = parseInt(actionId.replace('poke_slot_', ''), 10);
+    if (isNaN(slotIdx) || slotIdx < 0 || slotIdx > 2) return;
 
     let slots = data.slots;
     if (!slots) {
@@ -198,14 +243,16 @@ export function setupNotificationListeners(): () => void {
 
     if (!slots) return;
 
-    const slot = slots.find((s: PokeMessage) => s.key === actionId);
+    const slot = slots[slotIdx] as PokeMessage | undefined;
     if (!slot) return;
 
+    const message = slot.customLabel ?? slot.key;
+
     try {
-      console.log('[Notifications] Foreground/Background response detected. Sending poke:', actionId);
+      console.log('[Notifications] Foreground/Background response detected. Sending poke:', message);
       await pokeApi.send({
         partnerId: data.partnerId,
-        message: actionId,
+        message,
         emoji: slot.emoji,
       });
 
@@ -213,7 +260,7 @@ export function setupNotificationListeners(): () => void {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '❤️',
-          body: slot.emoji + ' ' + actionId,
+          body: `${slot.emoji} ${message}`,
           sound: 'default',
         },
         trigger: null,
@@ -270,40 +317,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
       return null;
     }
 
-    Notifications.setNotificationHandler({
-      handleNotification: async (notification: any) => {
-        const data = notification.request.content.data;
-        
-        // If the notification is for a specific recipient and it's NOT the current user, hide it.
-        // This solves the bug where users receive their own pokes when sharing a device/token.
-        if (data?.recipientId) {
-          try {
-            // We need to check the current userId. 
-            // Since we're in a service, we can't use hooks, we'll try to get it from storage.
-            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-            const currentUserId = await AsyncStorage.getItem('@love-tracker/sync/userId');
-            if (currentUserId && data.recipientId !== currentUserId) {
-              console.log('[Notifications] Hiding notification intended for another user:', data.recipientId);
-              return {
-                shouldShowBanner: false,
-                shouldShowList: false,
-                shouldPlaySound: false,
-              };
-            }
-          } catch (e) {
-            // Fallback: show if we can't check
-          }
-        }
-
-        return {
-          shouldShowBanner: true,
-          shouldShowList: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        };
-      },
-    });
-
     const projectId =
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.expoConfig?.extra?.projectId ??
@@ -350,15 +363,16 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
  */
 export async function registerPokeCategory(
   slots: [PokeMessage, PokeMessage, PokeMessage],
-  getLabel: (key: string) => string
+  getLabel: (msg: PokeMessage) => string
 ): Promise<void> {
   if (isExpoGo || Platform.OS === 'web') return;
 
   try {
     const Notifications = require('expo-notifications');
-    const actions = slots.map(slot => ({
-      identifier: slot.key,
-      buttonTitle: `${slot.emoji} ${getLabel(slot.key)}`,
+    // Action identifiers use slot index so custom pokes with key='custom' stay unique
+    const actions = slots.map((slot, idx) => ({
+      identifier: `poke_slot_${idx}`,
+      buttonTitle: `${slot.emoji} ${getLabel(slot)}`,
       options: { opensAppToForeground: false },
     }));
 

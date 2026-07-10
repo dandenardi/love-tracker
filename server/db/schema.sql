@@ -1,16 +1,19 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE users (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email           TEXT NOT NULL UNIQUE,
-  password_hash   TEXT NOT NULL,
-  alias           TEXT NOT NULL,
-  partner_id      UUID REFERENCES users(id) ON DELETE SET NULL,
-  invite_code     TEXT UNIQUE,
-  invite_plain    TEXT,
-  invite_expires  BIGINT,
-  push_token      TEXT,
-  created_at      BIGINT NOT NULL
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email               TEXT NOT NULL UNIQUE,
+  password_hash       TEXT NOT NULL,
+  alias               TEXT NOT NULL,
+  partner_id          UUID REFERENCES users(id) ON DELETE SET NULL,
+  invite_code         TEXT UNIQUE,
+  invite_plain        TEXT,
+  invite_expires      BIGINT,
+  push_token          TEXT,
+  ai_insights_opt_in  BOOLEAN NOT NULL DEFAULT false,
+  premium_active      BOOLEAN NOT NULL DEFAULT false,
+  premium_expires_at  BIGINT,
+  created_at          BIGINT NOT NULL
 );
 
 CREATE TABLE refresh_tokens (
@@ -45,7 +48,8 @@ CREATE TABLE events (
   logged_at      BIGINT NOT NULL,
   deleted_at     BIGINT,
   is_private     INTEGER NOT NULL DEFAULT 0,
-  created_at     BIGINT NOT NULL
+  created_at     BIGINT NOT NULL,
+  contact_token  TEXT
 );
 
 CREATE TABLE pokes (
@@ -58,6 +62,18 @@ CREATE TABLE pokes (
   sent_at        BIGINT NOT NULL,
   delivered_at   BIGINT,
   read_at        BIGINT
+);
+
+CREATE TABLE ai_insights (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id            UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  domain             TEXT NOT NULL CHECK (domain IN ('solo', 'couple')),
+  title              TEXT NOT NULL,
+  body               TEXT NOT NULL,
+  evidence_event_ids TEXT[] NOT NULL DEFAULT '{}',
+  confidence         TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+  generated_at       BIGINT NOT NULL,
+  UNIQUE(user_id, domain)
 );
 
 CREATE UNIQUE INDEX idx_events_user_client ON events(user_id, client_id);

@@ -9,7 +9,6 @@ import {
 import { pokeApi } from "@/services/syncApi";
 import { Poke } from "@/types/shared";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { create } from "zustand";
 import { useActivityStore } from "./useActivityStore";
@@ -19,6 +18,7 @@ import { useActivityStore } from "./useActivityStore";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SLOTS_KEY = "@love-tracker/poke_slots";
+const CUSTOM_POKES_KEY = "@love-tracker/custom_pokes";
 const POKES_KEY = "@love-tracker/received_pokes";
 const LAST_CHECK_KEY = "@love-tracker/last_poke_check";
 
@@ -66,6 +66,9 @@ export interface PokeState {
   /** All available poke messages (for the picker) */
   allMessages: PokeMessage[];
 
+  /** User-created custom poke messages, persisted across sessions */
+  savedCustomPokes: PokeMessage[];
+
   isSending: boolean;
   isHydrated: boolean;
   lastError: string | null;
@@ -73,14 +76,10 @@ export interface PokeState {
   /** Load pokes received since the given timestamp */
   loadPokes: (since: number) => Promise<void>;
 
-  /**
-   * Send a poke to a partner.
-   * `messageKey` is the i18n key (e.g. 'thinking'), resolved to a label by the caller.
-   */
+  /** Send a poke to a partner using the given slot (preset or custom). */
   sendPoke: (
     partnerId: string,
-    messageKey: string,
-    emoji: string,
+    slot: PokeMessage,
   ) => Promise<void>;
 
   /**
@@ -92,8 +91,14 @@ export interface PokeState {
     context: PokeNotificationContext,
     titleText: string,
     bodyText: string,
-    getLabel: (key: string) => string,
+    getLabel: (msg: PokeMessage) => string,
   ) => Promise<void>;
+
+  /** Persist a new custom poke to the saved list. Deduplicates by label. */
+  addCustomPoke: (msg: PokeMessage) => Promise<void>;
+
+  /** Remove a custom poke from the saved list. */
+  removeCustomPoke: (msg: PokeMessage) => Promise<void>;
 
   /** Mark a poke as read on the server */
   markRead: (pokeId: string) => Promise<void>;
@@ -107,6 +112,7 @@ export const usePokeStore = create<PokeState>((set, get) => ({
   lastPokeCheckedAt: 0,
   slots: DEFAULT_SLOTS, // will be hydrated by loadSlotsAsync in init
   allMessages: POKE_MESSAGES,
+  savedCustomPokes: [],
   isSending: false,
   isHydrated: false,
   lastError: null,
@@ -118,14 +124,16 @@ export const usePokeStore = create<PokeState>((set, get) => ({
       const POKES_KEY = "@love-tracker/received_pokes";
       const LAST_CHECK_KEY = "@love-tracker/last_poke_check";
       try {
-        const [savedPokes, savedCheck, storedSlots] = await Promise.all([
+        const [savedPokes, savedCheck, storedSlots, rawCustom] = await Promise.all([
           AsyncStorage.getItem(POKES_KEY),
           AsyncStorage.getItem(LAST_CHECK_KEY),
           loadSlotsAsync(),
+          AsyncStorage.getItem(CUSTOM_POKES_KEY),
         ]);
         const updates: Partial<PokeState> = { slots: storedSlots, isHydrated: true };
         if (savedPokes) updates.receivedPokes = JSON.parse(savedPokes);
         if (savedCheck) updates.lastPokeCheckedAt = parseInt(savedCheck, 10);
+        if (rawCustom) updates.savedCustomPokes = JSON.parse(rawCustom);
         set(updates);
       } catch (e) {
         console.warn("[PokeStore] Hydration failed:", e);
@@ -144,7 +152,6 @@ export const usePokeStore = create<PokeState>((set, get) => ({
 
     try {
       const res = await pokeApi.list(effectiveSince);
-      const currentSlots = get().slots;
       const { userId } = require('./useSyncStore').useSyncStore.getState();
       const i18n = require('@/i18n').default;
       const t = i18n.t.bind(i18n);
@@ -161,7 +168,7 @@ export const usePokeStore = create<PokeState>((set, get) => ({
         const existingIdx = existingPokes.findIndex(p => p.id === incoming.id);
         const msg = POKE_MESSAGES.find((m) => m.key === incoming.message);
         const translatedMsg = msg ? t(`poke.messages.${msg.key}`) : incoming.message;
-        const displayMsg = msg ? `${msg.emoji} ${translatedMsg}` : incoming.message;
+        const displayMsg = msg ? `${msg.emoji} ${translatedMsg}` : `${incoming.emoji} ${incoming.message}`;
 
         if (existingIdx !== -1) {
           // Status Reconciliation
@@ -189,27 +196,6 @@ export const usePokeStore = create<PokeState>((set, get) => ({
 
           if (incoming.senderId !== userId && !incoming.deliveredAt) {
             get().markDelivered(incoming.id).catch(console.error);
-          }
-
-          const isNew = incoming.sentAt > get().lastPokeCheckedAt;
-          const isVeryRecent = incoming.sentAt > (Date.now() - 30 * 60 * 1000);
-
-          if (incoming.senderId !== userId && !incoming.readAt && isNew && isVeryRecent && Platform.OS !== 'web') {
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: t('notifications.pokeReceivedTitle', { name: incoming.senderAlias }),
-                body: displayMsg,
-                categoryIdentifier: 'POKE_CATEGORY',
-                data: { 
-                  pokeId: incoming.id, 
-                  partnerId: incoming.senderId,
-                  recipientId: userId,
-                  slots: currentSlots,
-                },
-                sound: "default",
-              },
-              trigger: null,
-            }).catch(console.error);
           }
 
           activityStore.addActivity({
@@ -265,28 +251,28 @@ export const usePokeStore = create<PokeState>((set, get) => ({
     }
   },
 
-  sendPoke: async (partnerId: string, messageKey: string, emoji: string) => {
+  sendPoke: async (partnerId: string, slot: PokeMessage) => {
     set({ isSending: true, lastError: null });
     try {
-      const res = await pokeApi.send({ partnerId, message: messageKey, emoji });
-      
-      // Add to activity store as "Sent Poke"
+      const message = slot.customLabel ?? slot.key;
+      const res = await pokeApi.send({ partnerId, message, emoji: slot.emoji });
+
       const { userId } = require('./useSyncStore').useSyncStore.getState();
       const i18n = require('@/i18n').default;
       const t = i18n.t.bind(i18n);
-      const translatedMsg = t(`poke.messages.${messageKey}`);
+      const label = slot.customLabel ?? t(`poke.messages.${slot.key}`);
+      const displayMsg = `${slot.emoji} ${label}`;
 
       useActivityStore.getState().addActivity({
         id: res.id,
         type: 'poke',
         title: t('notifications.pokeSentTitle'),
-        body: `${emoji} ${translatedMsg}`,
+        body: displayMsg,
         timestamp: Date.now(),
         senderId: userId,
         data: { pokeId: res.id },
       }).catch(console.error);
 
-      // ── NEW: Log to Timeline (EventsStore) ───────────────────────────
       const contactsStore = require('./useContactsStore').useContactsStore.getState();
       const contact = contactsStore.getContactByPartnerId(partnerId);
       if (contact) {
@@ -296,11 +282,11 @@ export const usePokeStore = create<PokeState>((set, get) => ({
           contact_id: contact.id,
           type: 'POKE',
           title: t('notifications.pokeSentTitle'),
-          note: `${emoji} ${translatedMsg}`,
+          note: displayMsg,
           intensity: 0,
           occurred_at: Date.now(),
           logged_at: Date.now(),
-          synced: 1, // Already on server
+          synced: 1,
           is_private: 0,
         }).catch(console.error);
       }
@@ -332,6 +318,21 @@ export const usePokeStore = create<PokeState>((set, get) => ({
         err.message,
       );
     }
+  },
+
+  addCustomPoke: async (msg: PokeMessage) => {
+    const current = get().savedCustomPokes;
+    // Deduplicate by customLabel — replace if the same label exists (emoji may have changed)
+    const filtered = current.filter(p => p.customLabel !== msg.customLabel);
+    const updated = [...filtered, msg];
+    set({ savedCustomPokes: updated });
+    await AsyncStorage.setItem(CUSTOM_POKES_KEY, JSON.stringify(updated));
+  },
+
+  removeCustomPoke: async (msg: PokeMessage) => {
+    const updated = get().savedCustomPokes.filter(p => p.customLabel !== msg.customLabel);
+    set({ savedCustomPokes: updated });
+    await AsyncStorage.setItem(CUSTOM_POKES_KEY, JSON.stringify(updated));
   },
 
   markRead: async (pokeId: string) => {

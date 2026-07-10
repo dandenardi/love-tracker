@@ -1,5 +1,6 @@
 {
   "common": {
+    "error": "Error",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -64,6 +65,7 @@
   },
   "contacts": {
     "title": "People",
+    "solo": "Solo Diary",
     "addContact": "Add Person",
     "editContact": "Edit Person",
     "deleteContact": "Remove Person",
@@ -98,9 +100,50 @@
     "thisMonth": "This Month",
     "allTime": "All Time"
   },
+  "aiInsights": {
+    "title": "AI Insights",
+    "cardSubtitle": "Discover patterns in your relationship history",
+    "consentTitle": "Unlock AI Insights",
+    "consentBody": "Your logged events (never your private notes) are sent to Claude, our AI provider, to find patterns you might not notice yourself. This never leaves your account and is never shared with a partner.",
+    "enable": "Enable AI Insights",
+    "domainSolo": "Solo",
+    "domainCouple": "Couple",
+    "confidence": {
+      "low": "Low confidence",
+      "medium": "Medium confidence",
+      "high": "High confidence"
+    },
+    "evidenceCount": "Based on {{count}} logged events",
+    "evidenceCount_one": "Based on {{count}} logged event",
+    "notEnoughData": "Log a few more events to unlock this — you have {{count}} of {{threshold}} needed.",
+    "noPartner": "You need an active partner connection to see couple insights.",
+    "teaser": "This month you logged {{count}} {{type}} events — the most of any type."
+  },
+  "paywall": {
+    "title": "Premium",
+    "badge": "Premium",
+    "heading": "Unlock Full AI Insights",
+    "body": "Get unlimited AI-generated insights for both your solo and couple history, refreshed daily.",
+    "unavailable": "Plans aren't available right now — please try again later.",
+    "unlockTitle": "Unlock Full AI Insights",
+    "unlockBody": "You're seeing a free preview. Upgrade to Premium for the complete, AI-generated version.",
+    "viewPlans": "View Plans",
+    "restore": "Restore Purchases",
+    "restoring": "Restoring…",
+    "restoreSuccess": "Your purchase has been restored.",
+    "restoreNotFound": "No active subscription found for this account.",
+    "purchaseFailed": "Something went wrong with the purchase. Please try again.",
+    "confirmingDelay": "Your purchase was successful and is being confirmed — it may take a minute to unlock.",
+    "status": "Subscription",
+    "statusActive": "Active until {{date}}",
+    "statusFree": "Free plan",
+    "manage": "Manage Subscription",
+    "manageBtn": "Open Play Store"
+  },
   "settings": {
     "title": "Settings",
     "privacy": "Privacy",
+    "premium": "Premium",
     "biometric": "Biometric Lock",
     "biometricDesc": "Require fingerprint or face to open",
     "pin": "PIN Lock",
@@ -191,7 +234,16 @@
       "kiss": "Sending you a kiss",
       "betterDay": "You make my day better",
       "proud": "So proud of you"
-    }
+    },
+    "customSavedHeader": "MY CUSTOM POKES",
+    "customLimitReached": "Limit reached (5 max) — delete one to add more",
+    "customCreate": "Create custom poke…",
+    "customEditorTitle": "Custom Poke",
+    "customEmojiLabel": "Emoji",
+    "customEmojiPlaceholder": "💬",
+    "customMessageLabel": "Message",
+    "customMessagePlaceholder": "Your personal message…",
+    "customSave": "Save"
   },
   "notifications": {
     "title": "Notifications",

@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authApi, syncApi, setAccessToken, onSessionExpired, pokeApi } from '@/services/syncApi';
 import { storage } from '@/services/storage';
+import { getPendingDeletedIds } from '@/db/events';
+import { computeContactToken } from '@/services/contactToken';
 import { Partner, type ServerEvent } from '@/types/shared';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
@@ -352,29 +354,54 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       const eventsStore = useEventsStore.getState();
       const contactsStore = useContactsStore.getState();
       
-      const unsyncedEvents = eventsStore.events.filter(e => e.synced === 0 && e.is_private === 0);
+      const unsyncedEvents = eventsStore.events.filter(e => e.synced === 0);
 
-      // 1. Group events by partner and push
+      // 0. Push pending local deletions (tombstones not yet confirmed by the server). These
+      // live only in SQLite, not in-memory `events` (removeEvent already filters them out of
+      // state), so they're fetched separately. A failed delete just leaves its tombstone in
+      // place for the next sync attempt — never abort the whole sync over one failed delete.
+      // See specs/005-deletion-sync/spec.md.
+      const pendingDeletedIds = await getPendingDeletedIds();
+      for (const id of pendingDeletedIds) {
+        try {
+          await syncApi.delete(id);
+          await eventsStore.applyRemoteDeletion(id);
+        } catch (err) {
+          console.error('[SyncStore] Failed to push deletion for', id, err);
+        }
+      }
+
+      // 1. Group events by partner and push. Anything that isn't a non-private event with a
+      // resolvable active partner is backed up as an own-only event instead (partnershipId:
+      // null) — never dropped silently. See specs/004-private-event-backup-sync/spec.md.
       if (unsyncedEvents.length > 0) {
         const eventsToPush: ServerEvent[] = [];
-        
+
         for (const e of unsyncedEvents) {
           const contact = contactsStore.contacts.find(c => c.id === e.contact_id);
           const partner = partners.find(p => p.id === contact?.partner_user_id && p.status === 'active');
-          
-          if (partner) {
-            eventsToPush.push({
-              clientId: e.id,
-              partnershipId: partner.partnershipId,
-              type: e.type,
-              title: e.title,
-              note: e.note,
-              intensity: e.intensity,
-              mood_tag: e.mood_tag,
-              occurred_at: e.occurred_at,
-              logged_at: e.logged_at,
-            });
-          }
+          const isShared = !!partner && e.is_private === 0;
+
+          // Casual (non-partner) contacts get an opaque grouping tag so solo AI Insights can
+          // detect person-specific patterns without the server ever learning contact identity.
+          // See specs/006-pseudonymous-contact-tokens.
+          const contactToken = contact && contact.is_partner === 0
+            ? await computeContactToken(contact.id)
+            : undefined;
+
+          eventsToPush.push({
+            clientId: e.id,
+            partnershipId: isShared ? partner!.partnershipId : null,
+            is_private: e.is_private,
+            contactToken,
+            type: e.type,
+            title: e.title,
+            note: e.note,
+            intensity: e.intensity,
+            mood_tag: e.mood_tag,
+            occurred_at: e.occurred_at,
+            logged_at: e.logged_at,
+          });
         }
 
         if (eventsToPush.length > 0) {
@@ -463,11 +490,44 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         }
       }
 
-      // 5. Process deletions
+      // 4b. Merge this user's own backup events (private/unlinked, and own shared-authored
+      // events on device restore). Always contact_id: null — restoring a private couple event's
+      // original Contact link isn't attempted (see specs/004-private-event-backup-sync/spec.md,
+      // Out of Scope). upsertEvent's ON CONFLICT clause never overwrites contact_id/is_private
+      // on an existing local row, so this is safe to run every sync even when nothing changed.
+      if (res.ownEvents?.length > 0) {
+        for (const oe of res.ownEvents) {
+          await eventsStore.syncEvent({
+            id: oe.clientId,
+            contact_id: null,
+            type: oe.type,
+            title: oe.title,
+            note: oe.note,
+            intensity: oe.intensity,
+            mood_tag: oe.mood_tag,
+            occurred_at: oe.occurred_at,
+            logged_at: oe.logged_at,
+            synced: 1,
+            is_private: oe.is_private,
+          });
+        }
+      }
+
+      // 5. Process deletions. Always applyRemoteDeletion (hard purge, no outbound push) here —
+      // these are already confirmed server-side; using removeEvent would incorrectly create a
+      // new local tombstone and attempt to re-push a delete for an id outside this user's own
+      // client_id namespace. See specs/005-deletion-sync/spec.md.
       if (res.deletedIds.length > 0) {
-        res.deletedIds.forEach((id: string) => {
-          eventsStore.removeEvent(id);
-        });
+        for (const id of res.deletedIds) {
+          await eventsStore.applyRemoteDeletion(id);
+        }
+      }
+
+      // 5b. Process this user's own deletions arriving from another of their devices.
+      if (res.ownDeletedIds?.length > 0) {
+        for (const id of res.ownDeletedIds) {
+          await eventsStore.applyRemoteDeletion(id);
+        }
       }
 
       const now = Date.now();

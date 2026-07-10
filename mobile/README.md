@@ -1,56 +1,56 @@
-# Welcome to your Expo app 👋
+# Love Tracker — Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native / Expo app for the Love Tracker relationship journal. Android-first, distributed via Google Play.
 
-## Get started
+## Requirements
 
-1. Install dependencies
+- Node 22.x
+- EAS CLI (`npm install -g eas-cli`)
+- `google-services.json` in `mobile/` (not committed; provided via EAS secret for CI builds)
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Running locally
 
 ```bash
-npm run reset-project
+cd mobile
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use a development build (not Expo Go) for full feature support (SQLite, notifications, secure store).
 
-### Other setup steps
+## Building & deploying
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+# Preview APK (internal distribution)
+eas build --profile preview
 
-## Learn more
+# Production AAB → Google Play
+eas build --profile production
+eas submit --profile production
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+`autoIncrement: true` in `eas.json` bumps `android.versionCode` in `app.json` automatically on each production build. The displayed version (`1.0.{versionCode}`) is computed at build time in `app.config.js`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## After a production deploy
 
-## Join the community
+1. Move `[Unreleased]` in `CHANGELOG.md` to `[1.0.X] - YYYY-MM-DD`
+2. Add a fresh empty `[Unreleased]` block
+3. Verify the Settings screen shows the new version on the installed build
 
-Join our community of developers creating universal apps.
+## Project structure
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+mobile/
+  app.json          # static config; versionCode is the build counter
+  app.config.js     # dynamic config; computes version string at build time
+  eas.json          # EAS build profiles
+  src/
+    app/            # Expo Router screens (file-based routing)
+    components/     # shared UI components
+    constants/      # themes, event types
+    context/        # ThemeContext
+    hooks/          # usePrivacyLock, etc.
+    i18n/           # translations (EN, PT)
+    services/       # notifications, factoryReset
+    store/          # Zustand stores (contacts, sync, poke)
+```

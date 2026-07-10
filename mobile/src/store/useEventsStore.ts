@@ -4,6 +4,7 @@ import {
   upsertEvent,
   updateEvent,
   deleteEvent,
+  purgeDeletedEvent,
   getAllEvents,
   getEventsForMonth,
   getEventsByDate,
@@ -13,18 +14,22 @@ import {
 interface EventsState {
   events: LoveEvent[];
   // Actions
-  loadEvents: (contactId: string) => Promise<void>;
+  loadEvents: (contactId: string | null) => Promise<void>;
   logEvent: (payload: Omit<LoveEvent, 'id' | 'logged_at' | 'synced'>) => Promise<LoveEvent>;
   editEvent: (id: string, patch: Partial<Omit<LoveEvent, 'id'>>) => Promise<void>;
+  /** User-initiated delete: soft-deletes locally (tombstone) and triggers a sync attempt to push it. */
   removeEvent: (id: string) => Promise<void>;
+  /** Applies a deletion that's already confirmed elsewhere (partner's or this user's other
+   * device) — hard-purges locally, no outbound sync trigger. */
+  applyRemoteDeletion: (id: string) => Promise<void>;
   /** Flips the is_private flag on a single event. */
   togglePrivate: (id: string) => Promise<void>;
   // Selectors (call these with a contactId to get filtered lists)
-  getMonthEvents: (contactId: string, year: number, month: number) => Promise<LoveEvent[]>;
-  getDayEvents: (contactId: string, dateMs: number) => Promise<LoveEvent[]>;
+  getMonthEvents: (contactId: string | null, year: number, month: number) => Promise<LoveEvent[]>;
+  getDayEvents: (contactId: string | null, dateMs: number) => Promise<LoveEvent[]>;
   syncEvent: (event: LoveEvent) => Promise<void>;
   updateEventStatus: (id: string, status: { delivered_at?: number; read_at?: number }) => Promise<void>;
-  markContactEventsAsSynced: (contactId: string) => Promise<void>;
+  markContactEventsAsSynced: (contactId: string | null) => Promise<void>;
 }
 
 export const useEventsStore = create<EventsState>((set, get) => ({
@@ -65,6 +70,11 @@ export const useEventsStore = create<EventsState>((set, get) => ({
     // Trigger background sync
     const { useSyncStore } = require('./useSyncStore');
     useSyncStore.getState().sync().catch(console.error);
+  },
+
+  applyRemoteDeletion: async (id) => {
+    await purgeDeletedEvent(id);
+    set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
   },
 
   togglePrivate: async (id) => {

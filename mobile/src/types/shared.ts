@@ -12,7 +12,8 @@ export type EventTypeKey =
 
 export interface LoveEvent {
   id: string;
-  contact_id: string;
+  /** null = unlinked solo diary entry, not tied to any Contact */
+  contact_id?: string | null;
   type: EventTypeKey;
   title?: string;
   note?: string;
@@ -26,6 +27,8 @@ export interface LoveEvent {
   is_private: number;
   delivered_at?: number;
   read_at?: number;
+  /** set when soft-deleted locally, pending push confirmation; row is purged once confirmed */
+  deleted_at?: number | null;
 }
 
 export interface Contact {
@@ -93,10 +96,14 @@ export interface PairResponse {
 
 // ── Sync ─────────────────────────────────────────────────────────────────────
 
-/** A public event as stored/exchanged on the server. is_private is intentionally absent. */
 export interface ServerEvent {
   clientId: string;
-  partnershipId: string;
+  /** null = own-only backup, never shared with a partner (private or unlinked events) */
+  partnershipId?: string | null;
+  /** 1 = private. Own-only backup rows may be 0 or 1; shared rows are always 0. */
+  is_private: number;
+  /** One-way hash of the local contact_id, solo-domain casual-contact events only. See specs/006. */
+  contactToken?: string | null;
   type: EventTypeKey;
   title?: string;
   note?: string;
@@ -112,7 +119,12 @@ export interface SyncPushPayload {
 
 export interface SyncPullResponse {
   events: (ServerEvent & { partnerId: string })[];
+  /** This user's own private/unlinked events, backed up but never partner-visible. */
+  ownEvents: ServerEvent[];
+  /** Partner's deletions of shared events. */
   deletedIds: string[];
+  /** This user's own deletions, for propagation across their own devices. */
+  ownDeletedIds: string[];
   partners: Partner[];
 }
 
@@ -143,4 +155,35 @@ export interface PokesResponse {
 
 export interface SavePushTokenPayload {
   token: string;
+}
+
+// ── AI Insights (spec 002) ──────────────────────────────────────────────────
+
+export type InsightDomain = 'solo' | 'couple';
+
+export interface AIInsight {
+  title: string;
+  body: string;
+  /** Event client_ids supporting this insight — matches local event ids on-device. */
+  evidenceEventIds: string[];
+  confidence: 'low' | 'medium' | 'high';
+  generatedAt: number;
+}
+
+export type InsightResponse =
+  | { status: 'ok'; insight: AIInsight }
+  | { status: 'consent_required' }
+  | { status: 'premium_required' }
+  | { status: 'not_enough_data'; eventCount: number; threshold: number }
+  | { status: 'no_partner' };
+
+export interface InsightConsentPayload {
+  optIn: boolean;
+}
+
+// ── Premium Entitlements (spec 003) ─────────────────────────────────────────
+
+export interface EntitlementStatus {
+  premium: boolean;
+  expiresAt: number | null;
 }

@@ -5,8 +5,9 @@ import { withProjectBuildGradle, withAppBuildGradle } from "@expo/config-plugins
 const config = ({ config }) => {
   // Dynamic versioning: base version from app.json + build number (versionCode)
   // During EAS build, EAS_BUILD_NUMBER is the build number (incremented automatically)
-  const baseVersion = config.version.split('.').slice(0, 2).join('.') || '1.0';
-  const buildNumber = process.env.EAS_BUILD_NUMBER || '0';
+  const baseVersion = "1.0";
+  // Fallback to versionCode from app.json if EAS_BUILD_NUMBER is not set
+  const buildNumber = process.env.EAS_BUILD_NUMBER || config.android?.versionCode || "1";
   const dynamicVersion = `${baseVersion}.${buildNumber}`;
 
   return {
@@ -19,6 +20,7 @@ const config = ({ config }) => {
     extra: {
       ...config.extra,
       apiUrl: process.env.API_URL,
+      revenueCatAndroidKey: process.env.REVENUECAT_ANDROID_KEY,
     },
     plugins: [
       "@react-native-google-signin/google-signin",

@@ -19,6 +19,8 @@ export default function CalendarScreen() {
   const router = useRouter();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const soloModeActive = useContactsStore((s) => s.soloModeActive);
+  const effectiveContactId = useContactsStore((s) => s.getEffectiveContactId());
   const events = useEventsStore((s) => s.events); // Watch events for refresh
   const getDayEvents = useEventsStore((s) => s.getDayEvents);
   const getMonthEvents = useEventsStore((s) => s.getMonthEvents);
@@ -32,26 +34,26 @@ export default function CalendarScreen() {
 
   // Fetch month events when month or active contact changes
   useEffect(() => {
-    if (!activeContactId) return;
-    getMonthEvents(activeContactId, currentMonth.year, currentMonth.month)
+    if (!soloModeActive && !activeContactId) return;
+    getMonthEvents(effectiveContactId, currentMonth.year, currentMonth.month)
       .then(setMonthEvents)
       .catch(console.error);
-  }, [activeContactId, currentMonth, events, getMonthEvents]);
+  }, [soloModeActive, activeContactId, currentMonth, events, getMonthEvents]);
 
   // Fetch day events when selected date changes
   useEffect(() => {
-    if (!activeContactId || !selectedDate) {
+    if ((!soloModeActive && !activeContactId) || !selectedDate) {
       setDayEvents([]);
       return;
     }
-    getDayEvents(activeContactId, new Date(selectedDate + 'T12:00:00').getTime())
+    getDayEvents(effectiveContactId, new Date(selectedDate + 'T12:00:00').getTime())
       .then(setDayEvents)
       .catch(console.error);
-  }, [activeContactId, selectedDate, events, getDayEvents]);
+  }, [soloModeActive, activeContactId, selectedDate, events, getDayEvents]);
 
   // Build marked dates for current month
   const markedDates = useMemo(() => {
-    if (!activeContactId) return {};
+    if (!soloModeActive && !activeContactId) return {};
     const marks: Record<string, any> = {};
     for (const ev of monthEvents) {
       const dateStr = format(new Date(ev.occurred_at), 'yyyy-MM-dd');
@@ -69,7 +71,7 @@ export default function CalendarScreen() {
       };
     }
     return marks;
-  }, [activeContactId, monthEvents, selectedDate, c.primary]);
+  }, [soloModeActive, activeContactId, monthEvents, selectedDate, c.primary]);
 
 
   const handleDayPress = useCallback((day: any) => {
@@ -132,7 +134,7 @@ export default function CalendarScreen() {
               <TouchableOpacity
                 onPress={() => {
                   setShowDayModal(false);
-                  router.push({ pathname: '/modal/log-event', params: { date: selectedDate || '', contactId: activeContactId || '' } });
+                  router.push({ pathname: '/modal/log-event', params: { date: selectedDate || '', contactId: effectiveContactId || '' } });
                 }}
                 style={[styles.addEventBtn, { backgroundColor: c.primary + '15' }]}
               >

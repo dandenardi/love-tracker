@@ -23,8 +23,9 @@ export default function LogEventModal() {
 
   const logEvent = useEventsStore((s) => s.logEvent);
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const soloModeActive = useContactsStore((s) => s.soloModeActive);
 
-  const contactId = params.contactId || activeContactId || '';
+  const contactId = soloModeActive ? null : (params.contactId || activeContactId || null);
   const [selectedType, setSelectedType] = useState(params.type ?? 'SPECIAL');
   const [note, setNote] = useState('');
   const [title, setTitle] = useState('');
@@ -49,7 +50,7 @@ export default function LogEventModal() {
   const cfg = EVENT_TYPE_MAP[selectedType as keyof typeof EVENT_TYPE_MAP];
 
   const handleSave = async () => {
-    if (!contactId) {
+    if (!soloModeActive && !contactId) {
       Alert.alert(t('common.error'), t('contacts.noContacts'));
       return;
     }

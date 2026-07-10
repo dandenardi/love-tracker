@@ -10,6 +10,7 @@
     "db:reset": "ts-node db/reset.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.17",
@@ -25,7 +26,8 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.20.0",
     "socket.io": "^4.8.3",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "ts-node": "^10.9.1",

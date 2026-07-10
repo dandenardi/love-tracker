@@ -60,13 +60,15 @@ export default function TimelineScreen() {
   const router = useRouter();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const soloModeActive = useContactsStore((s) => s.soloModeActive);
+  const effectiveContactId = useContactsStore((s) => s.getEffectiveContactId());
   const events = useEventsStore((s) => s.events);
   const loadEvents = useEventsStore((s) => s.loadEvents);
   const removeEvent = useEventsStore((s) => s.removeEvent);
 
   useEffect(() => {
-    if (activeContactId) loadEvents(activeContactId);
-  }, [activeContactId]);
+    if (soloModeActive || activeContactId) loadEvents(effectiveContactId);
+  }, [soloModeActive, activeContactId]);
 
   const groups = groupEventsByDate(events, i18n.language);
 

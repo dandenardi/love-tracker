@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
+import { useEntitlementStore } from '@/store/useEntitlementStore';
 import { EVENT_TYPES } from '@/constants/eventTypes';
 import { getEventCountByType, getDaysSinceLast } from '@/db/events';
 
@@ -59,25 +61,29 @@ export default function StatsScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
   const { t } = useTranslation();
+  const router = useRouter();
 
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const soloModeActive = useContactsStore((s) => s.soloModeActive);
+  const effectiveContactId = useContactsStore((s) => s.getEffectiveContactId());
   const events = useEventsStore((s) => s.events);
+  const premium = useEntitlementStore((s) => s.premium);
 
   const [countByType, setCountByType] = useState<Record<string, number>>({});
   const [daysSince, setDaysSince] = useState<Record<string, number | null>>({});
   const [totalEvents, setTotalEvents] = useState(0);
 
   useEffect(() => {
-    if (!activeContactId) return;
-    
+    if (!soloModeActive && !activeContactId) return;
+
     async function loadStats() {
       try {
-        const counts = await getEventCountByType(activeContactId!);
+        const counts = await getEventCountByType(effectiveContactId);
         const total = Object.values(counts).reduce((a, b) => Number(a || 0) + Number(b || 0), 0);
-        
+
         const since: Record<string, number | null> = {};
         for (const et of EVENT_TYPES) {
-          since[et.key] = await getDaysSinceLast(activeContactId!, et.key as any);
+          since[et.key] = await getDaysSinceLast(effectiveContactId, et.key as any);
         }
 
         setCountByType(counts);
@@ -89,7 +95,7 @@ export default function StatsScreen() {
     }
 
     loadStats();
-  }, [activeContactId, events]);
+  }, [soloModeActive, activeContactId, events]);
 
   const maxCount = Math.max(...Object.values(countByType).map(v => Number(v) || 0), 1);
 
@@ -120,6 +126,26 @@ export default function StatsScreen() {
             color={c.accent}
           />
         </View>
+
+        {/* AI Insights entry point */}
+        <TouchableOpacity
+          style={[styles.aiCard, { backgroundColor: c.surface, borderColor: c.border }]}
+          onPress={() => router.push('/modal/ai-insights')}
+        >
+          <Text style={{ fontSize: 24 }}>✨</Text>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.aiCardTitle, { color: c.text }]}>{t('aiInsights.title')}</Text>
+              {!premium && (
+                <View style={[styles.premiumBadge, { backgroundColor: c.primary + '25' }]}>
+                  <Text style={[styles.premiumBadgeText, { color: c.primary }]}>{t('paywall.badge')}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={[styles.aiCardSub, { color: c.textMuted }]}>{t('aiInsights.cardSubtitle')}</Text>
+          </View>
+          <Text style={{ color: c.textMuted, fontSize: 18 }}>›</Text>
+        </TouchableOpacity>
 
         {/* By Type Distribution */}
         <View style={[styles.section, { backgroundColor: c.surface, borderColor: c.border }]}>
@@ -160,6 +186,14 @@ const styles = StyleSheet.create({
   header: { marginBottom: 20 },
   title: { fontSize: 26, fontWeight: '800' },
   cardRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  aiCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 16,
+  },
+  aiCardTitle: { fontSize: 15, fontWeight: '700' },
+  aiCardSub: { fontSize: 12, marginTop: 2 },
+  premiumBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  premiumBadgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   statCard: {
     flex: 1, borderRadius: 16, borderWidth: 1,
     padding: 16, alignItems: 'center',

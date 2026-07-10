@@ -9,15 +9,21 @@ import {
 } from '@/db/contacts';
 
 const ACTIVE_CONTACT_KEY = '@love-tracker/activeContactId';
+const SOLO_MODE_KEY = '@love-tracker/soloModeActive';
 
 interface ContactsState {
   contacts: Contact[];
   activeContactId: string | null;
+  /** True when the user is logging/viewing unlinked solo diary entries instead of a Contact. */
+  soloModeActive: boolean;
   loadContacts: () => Promise<void>;
   addContact: (payload: Omit<Contact, 'id' | 'created_at'>) => Promise<Contact>;
   editContact: (id: string, patch: Partial<Omit<Contact, 'id'>>) => Promise<void>;
   removeContact: (id: string) => Promise<void>;
   setActiveContact: (id: string) => void;
+  setSoloMode: (active: boolean) => void;
+  /** Resolves the contact_id to use for reads/writes: null while solo mode is active. */
+  getEffectiveContactId: () => string | null;
   activeContact: () => Contact | null;
   getContactByPartnerId: (partnerId: string) => Contact | undefined;
   cleanupDuplicates: () => Promise<void>;
@@ -26,6 +32,7 @@ interface ContactsState {
 export const useContactsStore = create<ContactsState>((set, get) => ({
   contacts: [],
   activeContactId: null,
+  soloModeActive: false,
 
   loadContacts: async () => {
     const contacts = await getAllContacts();
@@ -35,8 +42,9 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
         ? stored
         : contacts[0]?.id ?? null;
     if (activeContactId) await AsyncStorage.setItem(ACTIVE_CONTACT_KEY, activeContactId);
-    set({ contacts, activeContactId });
-    
+    const soloModeActive = (await AsyncStorage.getItem(SOLO_MODE_KEY)) === '1';
+    set({ contacts, activeContactId, soloModeActive });
+
     // Run cleanup in background if there are contacts
     if (contacts.length > 1) {
       get().cleanupDuplicates().catch(console.error);
@@ -69,7 +77,18 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
 
   setActiveContact: (id) => {
     AsyncStorage.setItem(ACTIVE_CONTACT_KEY, id);
-    set({ activeContactId: id });
+    AsyncStorage.setItem(SOLO_MODE_KEY, '0');
+    set({ activeContactId: id, soloModeActive: false });
+  },
+
+  setSoloMode: (active) => {
+    AsyncStorage.setItem(SOLO_MODE_KEY, active ? '1' : '0');
+    set({ soloModeActive: active });
+  },
+
+  getEffectiveContactId: () => {
+    const { soloModeActive, activeContactId } = get();
+    return soloModeActive ? null : activeContactId;
   },
 
   activeContact: () => {

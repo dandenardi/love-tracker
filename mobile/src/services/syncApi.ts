@@ -11,6 +11,9 @@ import {
   SyncPullResponse,
   PokePayload,
   PokesResponse,
+  InsightDomain,
+  InsightResponse,
+  EntitlementStatus,
 } from '@/types/shared';
 
 import { storage } from './storage';
@@ -231,5 +234,28 @@ export const pokeApi = {
   markRead: (pokeId: string) =>
     request<{ status: string }>(`/poke/${pokeId}/read`, {
       method: 'PATCH',
+    }),
+};
+
+export const insightsApi = {
+  /** Opt in/out of AI Insights (required before any insight can be generated). */
+  setConsent: (optIn: boolean) =>
+    request<{ status: string; optIn: boolean }>('/insights/consent', {
+      method: 'POST',
+      body: JSON.stringify({ optIn }),
+    }),
+
+  /** Fetch (or generate, if the daily cache is stale) an insight for a domain. */
+  get: (domain: InsightDomain, locale: string) =>
+    request<InsightResponse>(`/insights/${domain}?locale=${locale}`, {
+      method: 'GET',
+    }),
+};
+
+export const entitlementsApi = {
+  /** Server-verified premium status — never trust the local RevenueCat SDK state alone. */
+  me: () =>
+    request<EntitlementStatus>('/entitlements/me', {
+      method: 'GET',
     }),
 };

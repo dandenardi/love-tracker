@@ -6,6 +6,7 @@ import {
 import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { THEMES, type ThemeKey } from '@/constants/themes';
@@ -13,8 +14,11 @@ import { usePrivacyLock } from '@/hooks/usePrivacyLock';
 import { useSyncStore } from '@/store/useSyncStore';
 import { useContactsStore } from '@/store/useContactsStore';
 import { usePokeStore } from '@/store/usePokeStore';
+import { useEntitlementStore } from '@/store/useEntitlementStore';
+import { restorePurchases as restorePurchasesRC } from '@/services/purchases';
 import { PokeMessage, schedulePokeNotification, registerPokeCategory } from '@/services/notificationService';
 import { setLanguage } from '@/i18n';
+import * as Application from 'expo-application';
 import { performFactoryReset } from '@/services/factoryReset';
 
 function SectionHeader({ label }: { label: string }) {
@@ -33,6 +37,69 @@ function SettingRow({ label, desc, children, last }: { label: string; desc?: str
       </View>
       {children}
     </View>
+  );
+}
+
+function PremiumSection() {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const { t } = useTranslation();
+  const router = useRouter();
+  const premium = useEntitlementStore((s) => s.premium);
+  const expiresAt = useEntitlementStore((s) => s.expiresAt);
+  const refresh = useEntitlementStore((s) => s.refresh);
+  const [restoring, setRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      await restorePurchasesRC();
+      await refresh();
+      Alert.alert(t('paywall.title'), useEntitlementStore.getState().premium ? t('paywall.restoreSuccess') : t('paywall.restoreNotFound'));
+    } catch (err: any) {
+      Alert.alert(t('common.error'), err?.message || t('paywall.purchaseFailed'));
+    } finally {
+      setRestoring(false);
+    }
+  };
+
+  const handleManageSubscription = () => {
+    const pkg = Application.applicationId;
+    Linking.openURL(`https://play.google.com/store/account/subscriptions?package=${pkg}`);
+  };
+
+  return (
+    <>
+      <SectionHeader label={t('settings.premium')} />
+      <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        <SettingRow
+          label={t('paywall.status')}
+          desc={premium ? t('paywall.statusActive', { date: expiresAt ? new Date(expiresAt).toLocaleDateString() : '' }) : t('paywall.statusFree')}
+          last={!premium}
+        >
+          {!premium && (
+            <TouchableOpacity
+              onPress={() => router.push('/modal/paywall')}
+              style={[styles.chip, { borderColor: c.primary, backgroundColor: c.primary + '15' }]}
+            >
+              <Text style={{ color: c.primary, fontSize: 12, fontWeight: '600' }}>{t('paywall.viewPlans')}</Text>
+            </TouchableOpacity>
+          )}
+        </SettingRow>
+        {premium && (
+          <SettingRow label={t('paywall.manage')} last>
+            <TouchableOpacity onPress={handleManageSubscription} style={[styles.chip, { borderColor: c.border }]}>
+              <Text style={{ color: c.textSecondary, fontSize: 12, fontWeight: '600' }}>{t('paywall.manageBtn')}</Text>
+            </TouchableOpacity>
+          </SettingRow>
+        )}
+      </View>
+      <TouchableOpacity onPress={handleRestore} disabled={restoring} style={{ alignItems: 'center', marginTop: 8, marginBottom: 4 }}>
+        <Text style={{ color: c.textMuted, fontSize: 12 }}>
+          {restoring ? t('paywall.restoring') : t('paywall.restore')}
+        </Text>
+      </TouchableOpacity>
+    </>
   );
 }
 
@@ -396,34 +463,65 @@ function PokeSection() {
   const c = theme.colors;
   const { t } = useTranslation();
   const sync = useSyncStore();
-  const { slots, allMessages, setSlots, isSending } = usePokeStore();
+  const { slots, allMessages, savedCustomPokes, setSlots, addCustomPoke, removeCustomPoke, isSending } = usePokeStore();
 
   const [pickerSlot, setPickerSlot] = useState<0 | 1 | 2 | null>(null);
   const [localSlots, setLocalSlots] = useState<[PokeMessage, PokeMessage, PokeMessage]>(slots);
 
+  // Custom poke editor state
+  const [customEditorSlot, setCustomEditorSlot] = useState<0 | 1 | 2 | null>(null);
+  const [customEmoji, setCustomEmoji] = useState('');
+  const [customMessage, setCustomMessage] = useState('');
+
   const activePartner = sync.partners.find(p => p.status === 'active');
   if (!sync.userId || !activePartner) return null;
 
-  const getLabel = (key: string) => t(`poke.messages.${key}`, { defaultValue: key });
+  const getSlotLabel = (slot: PokeMessage) =>
+    slot.customLabel ?? t(`poke.messages.${slot.key}`, { defaultValue: slot.key });
+
+  const persistSlots = async (updated: [PokeMessage, PokeMessage, PokeMessage]) => {
+    await setSlots(
+      updated,
+      { partnerId: activePartner.id, partnerName: activePartner.alias, slots: updated },
+      t('poke.notifTitle'),
+      t('poke.notifBody', { name: activePartner.alias }),
+      getSlotLabel,
+    );
+  };
 
   const handleSlotChange = async (slotIdx: 0 | 1 | 2, msg: PokeMessage) => {
     const updated: [PokeMessage, PokeMessage, PokeMessage] = [...localSlots] as any;
     updated[slotIdx] = msg;
     setLocalSlots(updated);
     setPickerSlot(null);
-    await setSlots(
-      updated,
-      { partnerId: activePartner.id, partnerName: activePartner.alias, slots: updated },
-      t('poke.notifTitle'),
-      t('poke.notifBody', { name: activePartner.alias }),
-      getLabel
-    );
+    await persistSlots(updated);
+  };
+
+  const handleOpenCustomEditor = (slotIdx: 0 | 1 | 2) => {
+    const existing = localSlots[slotIdx];
+    setCustomEmoji(existing.customLabel ? existing.emoji : '');
+    setCustomMessage(existing.customLabel ?? '');
+    setPickerSlot(null);
+    setCustomEditorSlot(slotIdx);
+  };
+
+  const handleSaveCustom = async () => {
+    if (customEditorSlot === null) return;
+    const emoji = customEmoji.trim() || '💬';
+    const label = customMessage.trim();
+    if (!label) return;
+    const newMsg: PokeMessage = { key: 'custom', emoji, customLabel: label };
+    await addCustomPoke(newMsg);
+    await handleSlotChange(customEditorSlot, newMsg);
+    setCustomEditorSlot(null);
+    setCustomEmoji('');
+    setCustomMessage('');
   };
 
   const handleTestPoke = async () => {
     const slot = localSlots[0];
     try {
-      await usePokeStore.getState().sendPoke(activePartner.id, slot.key, slot.emoji);
+      await usePokeStore.getState().sendPoke(activePartner.id, slot);
       Alert.alert('✅', t('poke.testSent'));
     } catch (e: any) {
       Alert.alert('Error', e.message);
@@ -454,7 +552,7 @@ function PokeSection() {
               >
                 <Text style={{ fontSize: 20 }}>{localSlots[idx].emoji}</Text>
                 <Text style={{ color: c.text, fontSize: 13, fontWeight: '600', flex: 1, marginLeft: 10 }}>
-                  {getLabel(localSlots[idx].key)}
+                  {getSlotLabel(localSlots[idx])}
                 </Text>
                 <Text style={{ color: c.textMuted, fontSize: 12 }}>▾</Text>
               </TouchableOpacity>
@@ -491,7 +589,8 @@ function PokeSection() {
               data={allMessages}
               keyExtractor={item => item.key}
               renderItem={({ item }) => {
-                const isSelected = localSlots[pickerSlot ?? 0]?.key === item.key;
+                const currentSlot = localSlots[pickerSlot ?? 0];
+                const isSelected = !currentSlot.customLabel && currentSlot.key === item.key;
                 return (
                   <TouchableOpacity
                     id={`poke-msg-${item.key}`}
@@ -502,20 +601,138 @@ function PokeSection() {
                     ]}
                   >
                     <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
-                    <Text style={[
-                      styles.rowLabel,
-                      { flex: 1, marginLeft: 12, color: isSelected ? c.primary : c.text }
-                    ]}>
-                      {getLabel(item.key)}
+                    <Text style={[styles.rowLabel, { flex: 1, marginLeft: 12, color: isSelected ? c.primary : c.text }]}>
+                      {getSlotLabel(item)}
                     </Text>
                     {isSelected && <Text style={{ color: c.primary }}>✓</Text>}
                   </TouchableOpacity>
                 );
               }}
+              ListFooterComponent={() => (
+                <>
+                  {savedCustomPokes.length > 0 && (
+                    <>
+                      <Text style={{ color: c.textMuted, fontSize: 11, fontWeight: '600', marginTop: 12, marginBottom: 4, paddingHorizontal: 4 }}>
+                        {t('poke.customSavedHeader')}
+                      </Text>
+                      {savedCustomPokes.map(item => {
+                        const currentSlot = localSlots[pickerSlot ?? 0];
+                        const isSelected = currentSlot.customLabel === item.customLabel;
+                        return (
+                          <View
+                            key={item.customLabel}
+                            style={[
+                              styles.messageRow,
+                              { borderBottomColor: c.border, backgroundColor: isSelected ? c.primary + '15' : 'transparent' }
+                            ]}
+                          >
+                            <TouchableOpacity
+                              style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                              onPress={() => pickerSlot !== null && handleSlotChange(pickerSlot, item)}
+                            >
+                              <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
+                              <Text style={[styles.rowLabel, { flex: 1, marginLeft: 12, color: isSelected ? c.primary : c.text }]}>
+                                {item.customLabel}
+                              </Text>
+                              {isSelected && <Text style={{ color: c.primary, marginRight: 8 }}>✓</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => removeCustomPoke(item)}
+                              style={{ padding: 6 }}
+                            >
+                              <Text style={{ color: c.textMuted, fontSize: 16 }}>🗑</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+                    </>
+                  )}
+                  {savedCustomPokes.length < 5 ? (
+                    <TouchableOpacity
+                      onPress={() => pickerSlot !== null && handleOpenCustomEditor(pickerSlot)}
+                      style={[styles.messageRow, { borderBottomColor: 'transparent', marginTop: 4 }]}
+                    >
+                      <Text style={{ fontSize: 22 }}>✏️</Text>
+                      <Text style={[styles.rowLabel, { flex: 1, marginLeft: 12, color: c.primary }]}>
+                        {t('poke.customCreate')}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={[styles.messageRow, { borderBottomColor: 'transparent', marginTop: 4 }]}>
+                      <Text style={{ fontSize: 22 }}>✏️</Text>
+                      <Text style={[styles.rowLabel, { flex: 1, marginLeft: 12, color: c.textMuted }]}>
+                        {t('poke.customLimitReached')}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             />
             <TouchableOpacity
               onPress={() => setPickerSlot(null)}
               style={[styles.primaryBtn, { backgroundColor: c.surfaceAlt, marginTop: 16 }]}
+            >
+              <Text style={{ color: c.textMuted, fontWeight: '600' }}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Poke Editor Modal */}
+      <Modal
+        visible={customEditorSlot !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCustomEditorSlot(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: c.surface }]}>
+            <Text style={[styles.rowLabel, { color: c.text, marginBottom: 4 }]}>
+              {t('poke.customEditorTitle')}
+            </Text>
+            <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 20 }}>
+              {t('poke.slotLabel', { n: (customEditorSlot ?? 0) + 1 })}
+            </Text>
+
+            <Text style={{ color: c.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
+              {t('poke.customEmojiLabel')}
+            </Text>
+            <TextInput
+              value={customEmoji}
+              onChangeText={v => setCustomEmoji(v.slice(0, 8))}
+              placeholder={t('poke.customEmojiPlaceholder')}
+              placeholderTextColor={c.textMuted}
+              style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt, fontSize: 24 }]}
+              maxLength={8}
+            />
+
+            <Text style={{ color: c.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>
+              {t('poke.customMessageLabel')}
+            </Text>
+            <TextInput
+              value={customMessage}
+              onChangeText={v => setCustomMessage(v.slice(0, 40))}
+              placeholder={t('poke.customMessagePlaceholder')}
+              placeholderTextColor={c.textMuted}
+              style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt }]}
+              maxLength={40}
+            />
+            <Text style={{ color: c.textMuted, fontSize: 11, textAlign: 'right', marginTop: -8, marginBottom: 16 }}>
+              {customMessage.length}/40
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleSaveCustom}
+              disabled={!customMessage.trim()}
+              style={[styles.primaryBtn, { backgroundColor: customMessage.trim() ? c.primary : c.border, marginBottom: 10 }]}
+            >
+              <Text style={[styles.btnText, { opacity: customMessage.trim() ? 1 : 0.5 }]}>
+                {t('poke.customSave')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setCustomEditorSlot(null)}
+              style={[styles.primaryBtn, { backgroundColor: c.surfaceAlt }]}
             >
               <Text style={{ color: c.textMuted, fontWeight: '600' }}>{t('common.cancel')}</Text>
             </TouchableOpacity>
@@ -625,6 +842,9 @@ function SettingsScreen() {
           ))}
         </View>
 
+        {/* ── Premium ── */}
+        <PremiumSection />
+
         {/* ── Partner Sync ── */}
         <PartnerSyncSection />
 
@@ -682,7 +902,7 @@ function SettingsScreen() {
         )}
 
         <Text style={[styles.version, { color: c.textMuted }]}>
-          {t('settings.versionDisplay', { version: Constants.expoConfig?.version || '1.0.0' })}
+          {t('settings.versionDisplay', { version: Constants.expoConfig?.version ?? Application.nativeApplicationVersion ?? '—' })}
         </Text>
       </ScrollView>
     </SafeAreaView>

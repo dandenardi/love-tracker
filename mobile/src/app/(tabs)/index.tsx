@@ -132,7 +132,10 @@ export default function HomeScreen() {
 
   const contacts = useContactsStore((s) => s.contacts);
   const activeContactId = useContactsStore((s) => s.activeContactId);
+  const soloModeActive = useContactsStore((s) => s.soloModeActive);
   const setActiveContact = useContactsStore((s) => s.setActiveContact);
+  const setSoloMode = useContactsStore((s) => s.setSoloMode);
+  const effectiveContactId = useContactsStore((s) => s.getEffectiveContactId());
   const activeContact = useContactsStore((s) => s.activeContact());
 
   const events = useEventsStore((s) => s.events);
@@ -152,32 +155,32 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeContactId) loadEvents(activeContactId);
-  }, [activeContactId]);
+    if (soloModeActive || activeContactId) loadEvents(effectiveContactId);
+  }, [soloModeActive, activeContactId]);
 
   const handleQuickLog = useCallback(
     async (typeKey: string) => {
-      if (!activeContactId) {
+      if (!soloModeActive && !activeContactId) {
         Alert.alert(t('contacts.noContacts'), t('contacts.addContact'));
         return;
       }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       logEvent({
-        contact_id: activeContactId,
+        contact_id: effectiveContactId,
         type: typeKey as any,
         intensity: 0,
         occurred_at: Date.now(),
         is_private: 0,
       });
     },
-    [activeContactId, logEvent, t]
+    [soloModeActive, activeContactId, effectiveContactId, logEvent, t]
   );
 
   const handleSendPoke = useCallback(async (slot: any) => {
     if (!activePartner) return;
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      await sendPoke(activePartner.id, slot.key, slot.emoji);
+      await sendPoke(activePartner.id, slot);
       if (Platform.OS === 'web') {
         alert(t('poke.sentSuccess', { name: activePartner.alias, emoji: slot.emoji }));
       }
@@ -190,9 +193,9 @@ export default function HomeScreen() {
 
   const handleLongPress = useCallback(
     (typeKey: string) => {
-      router.push({ pathname: '/modal/log-event', params: { type: typeKey, contactId: activeContactId ?? '' } });
+      router.push({ pathname: '/modal/log-event', params: { type: typeKey, contactId: effectiveContactId ?? '' } });
     },
-    [activeContactId, router]
+    [effectiveContactId, router]
   );
 
   const recentEvents = events.slice(0, 5);
@@ -222,22 +225,27 @@ export default function HomeScreen() {
         </View>
 
         {/* Contact Pills */}
-        {contacts.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsRow} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
-            {contacts.map((contact) => (
-              <ContactPill
-                key={contact.id}
-                name={contact.nickname ?? contact.name}
-                emoji={contact.avatar_emoji}
-                color={contact.color}
-                active={contact.id === activeContactId}
-                onPress={() => setActiveContact(contact.id)}
-              />
-            ))}
-          </ScrollView>
-        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillsRow} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+          <ContactPill
+            name={t('contacts.solo')}
+            emoji="📔"
+            color={c.primary}
+            active={soloModeActive}
+            onPress={() => setSoloMode(true)}
+          />
+          {contacts.map((contact) => (
+            <ContactPill
+              key={contact.id}
+              name={contact.nickname ?? contact.name}
+              emoji={contact.avatar_emoji}
+              color={contact.color}
+              active={!soloModeActive && contact.id === activeContactId}
+              onPress={() => setActiveContact(contact.id)}
+            />
+          ))}
+        </ScrollView>
 
-        {contacts.length === 0 ? (
+        {!soloModeActive && contacts.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: c.surface, borderColor: c.border }]}>
             <Text style={{ fontSize: 48, marginBottom: 12 }}>💝</Text>
             <Text style={[styles.emptyTitle, { color: c.text }]}>{t('onboarding.addFirst')}</Text>
@@ -269,7 +277,7 @@ export default function HomeScreen() {
                     >
                       <Text style={{ fontSize: 24 }}>{slot.emoji}</Text>
                       <Text style={[styles.pokeBtnLabel, { color: c.textSecondary }]}>
-                        {t(`poke.messages.${slot.key}`)}
+                        {slot.customLabel ?? t(`poke.messages.${slot.key}`)}
                       </Text>
                     </TouchableOpacity>
                   ))}

@@ -110,4 +110,12 @@ export async function initDatabase(): Promise<void> {
   } catch {
     // Column already exists
   }
+
+  try {
+    await db.execAsync(
+      `ALTER TABLE events ADD COLUMN deleted_at INTEGER;`
+    );
+  } catch {
+    // Column already exists
+  }
 }

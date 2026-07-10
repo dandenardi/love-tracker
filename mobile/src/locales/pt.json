@@ -1,5 +1,6 @@
 {
   "common": {
+    "error": "Erro",
     "save": "Salvar",
     "cancel": "Cancelar",
     "delete": "Excluir",
@@ -65,6 +66,7 @@
   },
   "contacts": {
     "title": "Pessoas",
+    "solo": "Diário Solo",
     "addContact": "Adicionar Pessoa",
     "editContact": "Editar Pessoa",
     "deleteContact": "Remover Pessoa",
@@ -99,9 +101,50 @@
     "thisMonth": "Este Mês",
     "allTime": "Desde Sempre"
   },
+  "aiInsights": {
+    "title": "Insights de IA",
+    "cardSubtitle": "Descubra padrões no seu histórico de relacionamento",
+    "consentTitle": "Desbloquear Insights de IA",
+    "consentBody": "Seus eventos registrados (nunca suas notas privadas) são enviados ao Claude, nosso provedor de IA, para encontrar padrões que talvez você não perceba sozinho(a). Isso nunca sai da sua conta e nunca é compartilhado com um parceiro.",
+    "enable": "Ativar Insights de IA",
+    "domainSolo": "Solo",
+    "domainCouple": "Casal",
+    "confidence": {
+      "low": "Confiança baixa",
+      "medium": "Confiança média",
+      "high": "Confiança alta"
+    },
+    "evidenceCount": "Baseado em {{count}} eventos registrados",
+    "evidenceCount_one": "Baseado em {{count}} evento registrado",
+    "notEnoughData": "Registre mais alguns eventos para desbloquear isso — você tem {{count}} de {{threshold}} necessários.",
+    "noPartner": "Você precisa de uma conexão ativa com um parceiro para ver insights de casal.",
+    "teaser": "Este mês você registrou {{count}} eventos do tipo {{type}} — o mais frequente."
+  },
+  "paywall": {
+    "title": "Premium",
+    "badge": "Premium",
+    "heading": "Desbloqueie os Insights de IA Completos",
+    "body": "Tenha insights de IA ilimitados para seu histórico solo e de casal, atualizados diariamente.",
+    "unavailable": "Os planos não estão disponíveis agora — tente novamente mais tarde.",
+    "unlockTitle": "Desbloqueie os Insights de IA Completos",
+    "unlockBody": "Você está vendo uma prévia gratuita. Assine o Premium para a versão completa, gerada por IA.",
+    "viewPlans": "Ver Planos",
+    "restore": "Restaurar Compras",
+    "restoring": "Restaurando…",
+    "restoreSuccess": "Sua compra foi restaurada.",
+    "restoreNotFound": "Nenhuma assinatura ativa encontrada para esta conta.",
+    "purchaseFailed": "Algo deu errado com a compra. Tente novamente.",
+    "confirmingDelay": "Sua compra foi bem-sucedida e está sendo confirmada — pode levar um minuto para desbloquear.",
+    "status": "Assinatura",
+    "statusActive": "Ativa até {{date}}",
+    "statusFree": "Plano gratuito",
+    "manage": "Gerenciar Assinatura",
+    "manageBtn": "Abrir Play Store"
+  },
   "settings": {
     "title": "Ajustes",
     "privacy": "Privacidade",
+    "premium": "Premium",
     "biometric": "Bloqueio Biométrico",
     "biometricDesc": "Exigir digital ou rosto para abrir",
     "pin": "Bloqueio por PIN",
@@ -192,7 +235,16 @@
       "kiss": "Beijo pra você",
       "betterDay": "Você faz meu dia melhor",
       "proud": "Tenho orgulho de você"
-    }
+    },
+    "customSavedHeader": "MEUS TOQUES PERSONALIZADOS",
+    "customLimitReached": "Limite atingido (máx. 5) — apague um para adicionar mais",
+    "customCreate": "Criar toque personalizado…",
+    "customEditorTitle": "Toque Personalizado",
+    "customEmojiLabel": "Emoji",
+    "customEmojiPlaceholder": "💬",
+    "customMessageLabel": "Mensagem",
+    "customMessagePlaceholder": "Sua mensagem pessoal…",
+    "customSave": "Salvar"
   },
   "notifications": {
     "title": "Notificações",
