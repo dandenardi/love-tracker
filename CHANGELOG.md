@@ -10,6 +10,10 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+---
+
+## [1.0.12] - 2026-07-14
+
 ### Added
 - Solo Diary: log dating moments without creating a Contact first — tap "Solo Diary" on the home screen to journal freely, no pairing or profile required
 - Private events and Solo Diary entries are now backed up to your account so they survive a lost or replaced phone — still never visible to a partner
