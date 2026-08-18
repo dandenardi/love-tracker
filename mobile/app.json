@@ -29,7 +29,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.dandenardi.lovetracker",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 12
+      "versionCode": 13
     },
     "web": {
       "bundler": "metro",

@@ -10,6 +10,10 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+---
+
+## [1.0.13] - 2026-08-18
+
 ### Fixed
 - Notifications you already read no longer reappear as unread after a while
 - You no longer receive poke notifications from a partner after unpairing from them
