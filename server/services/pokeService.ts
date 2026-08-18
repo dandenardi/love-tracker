@@ -75,12 +75,16 @@ export class PokeService {
    * Retrieve pokes received by a user since a given timestamp.
    */
   static async getPokes(userId: string, since: number): Promise<Poke[]> {
+    // Only pokes tied to a currently active partnership are returned. Unpairing (status
+    // flips to 'unpaired') or deleting the partnership (FK ON DELETE SET NULL) both make
+    // the INNER JOIN exclude the poke, so a dissolved partnership's pokes stop surfacing.
     const result = await pool.query(
       `SELECT pk.id, pk.sender_id, u.alias as sender_alias,
               pk.message, pk.emoji, pk.sent_at, pk.delivered_at, pk.read_at
        FROM pokes pk
        JOIN users u ON u.id = pk.sender_id
-       WHERE (pk.recipient_id = $1 OR pk.sender_id = $1) AND pk.sent_at > $2
+       JOIN partnerships p ON p.id = pk.partnership_id
+       WHERE (pk.recipient_id = $1 OR pk.sender_id = $1) AND pk.sent_at > $2 AND p.status = 'active'
        ORDER BY pk.sent_at DESC
        LIMIT 50`,
       [userId, since]

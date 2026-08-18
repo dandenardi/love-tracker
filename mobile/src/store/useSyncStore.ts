@@ -6,6 +6,7 @@ import { authApi, syncApi, setAccessToken, onSessionExpired, pokeApi } from '@/s
 import { storage } from '@/services/storage';
 import { getPendingDeletedIds } from '@/db/events';
 import { computeContactToken } from '@/services/contactToken';
+import { resolveEventSharing } from '@/services/syncPrivacy';
 import { Partner, type ServerEvent } from '@/types/shared';
 import { useEventsStore } from './useEventsStore';
 import { useContactsStore } from './useContactsStore';
@@ -315,6 +316,11 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       );
       await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
       set({ partners, isSyncing: false });
+
+      // Stale pokes/notifications from the now-dissolved partnership should stop
+      // surfacing locally, independent of whatever the server returns going forward.
+      await usePokeStore.getState().purgePartner(partnerId);
+      await useActivityStore.getState().removeBySender(partnerId);
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
       throw err;
@@ -337,7 +343,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       const partners = get().partners.filter(p => p.id !== partnerId);
       await AsyncStorage.setItem(`${STORAGE_KEY}/partners`, JSON.stringify(partners));
       set({ partners, isSyncing: false });
-      
+
+      await usePokeStore.getState().purgePartner(partnerId);
+      await useActivityStore.getState().removeBySender(partnerId);
+
       console.log(`[SyncStore] Partner forgotten: ${partnerId}`);
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
@@ -380,7 +389,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         for (const e of unsyncedEvents) {
           const contact = contactsStore.contacts.find(c => c.id === e.contact_id);
           const partner = partners.find(p => p.id === contact?.partner_user_id && p.status === 'active');
-          const isShared = !!partner && e.is_private === 0;
+          const { partnershipId } = resolveEventSharing(partner, e.is_private);
 
           // Casual (non-partner) contacts get an opaque grouping tag so solo AI Insights can
           // detect person-specific patterns without the server ever learning contact identity.
@@ -391,7 +400,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
 
           eventsToPush.push({
             clientId: e.id,
-            partnershipId: isShared ? partner!.partnershipId : null,
+            partnershipId,
             is_private: e.is_private,
             contactToken,
             type: e.type,

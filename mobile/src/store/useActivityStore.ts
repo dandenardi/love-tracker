@@ -22,12 +22,14 @@ interface ActivityState {
   activities: Activity[];
   isLoaded: boolean;
 
-  addActivity: (activity: Omit<Activity, 'readAt' | 'deliveredAt'>) => Promise<void>;
+  addActivity: (activity: Omit<Activity, 'readAt'> & { readAt?: number | null }) => Promise<void>;
   updateActivity: (id: string, updates: Partial<Activity>) => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearAll: () => Promise<void>;
   loadActivities: () => Promise<void>;
+  /** Purge cached activities from a given sender (e.g. an ex-partner after unpair) */
+  removeBySender: (senderId: string) => Promise<void>;
 }
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
@@ -71,12 +73,12 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     
     const timestamp = dateObj.getTime();
 
-    const newActivity: Activity = { 
-      ...activity, 
-      timestamp, 
-      readAt: null, 
-      pokeReadAt: activity.pokeReadAt || null, 
-      pokeDeliveredAt: activity.pokeDeliveredAt || null 
+    const newActivity: Activity = {
+      ...activity,
+      timestamp,
+      readAt: activity.readAt ?? null,
+      pokeReadAt: activity.pokeReadAt || null,
+      pokeDeliveredAt: activity.pokeDeliveredAt || null
     };
     const updated = [newActivity, ...get().activities].slice(0, 100);
 
@@ -111,5 +113,11 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   clearAll: async () => {
     set({ activities: [] });
     await AsyncStorage.removeItem(STORAGE_KEY);
+  },
+
+  removeBySender: async (senderId) => {
+    const updated = get().activities.filter(a => a.senderId !== senderId);
+    set({ activities: updated });
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   },
 }));

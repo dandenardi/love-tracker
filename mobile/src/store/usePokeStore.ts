@@ -105,6 +105,9 @@ export interface PokeState {
 
   /** Mark a poke as delivered on the server */
   markDelivered: (pokeId: string) => Promise<void>;
+
+  /** Purge cached pokes received from a given partner (e.g. an ex-partner after unpair) */
+  purgePartner: (partnerId: string) => Promise<void>;
 }
 
 export const usePokeStore = create<PokeState>((set, get) => ({
@@ -204,6 +207,10 @@ export const usePokeStore = create<PokeState>((set, get) => ({
             title: incoming.senderAlias,
             body: displayMsg,
             timestamp: incoming.sentAt,
+            // Reconstructing this poke after a local cache eviction shouldn't reset it to
+            // unread if the recipient already read it (on this or another device/session) —
+            // honor the server's own read_at instead of assuming it's brand new.
+            readAt: incoming.readAt || null,
             pokeReadAt: incoming.readAt || null,
             pokeDeliveredAt: incoming.deliveredAt || null,
             senderId: incoming.senderId,
@@ -375,5 +382,11 @@ export const usePokeStore = create<PokeState>((set, get) => ({
     } catch (err: any) {
       console.error("[PokeStore] Failed to mark poke as delivered:", err.message);
     }
+  },
+
+  purgePartner: async (partnerId: string) => {
+    const finalPokes = get().receivedPokes.filter((p) => p.senderId !== partnerId);
+    set({ receivedPokes: finalPokes });
+    await AsyncStorage.setItem(POKES_KEY, JSON.stringify(finalPokes));
   },
 }));

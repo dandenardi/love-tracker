@@ -185,7 +185,13 @@ export default function NotificationsScreen() {
 
       {activities.some(a => !a.readAt) && (
         <TouchableOpacity
-          onPress={markAllAsRead}
+          onPress={() => {
+            const pokeStore = require('@/store/usePokeStore').usePokeStore.getState();
+            activities
+              .filter(a => !a.readAt && a.type === 'poke' && a.senderId !== userId)
+              .forEach(a => pokeStore.markRead(a.id));
+            markAllAsRead();
+          }}
           style={[styles.markAllBtn, { backgroundColor: c.primary }]}
         >
           <Text style={styles.markAllText}>{t('notifications.markRead')}</Text>

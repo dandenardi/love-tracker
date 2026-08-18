@@ -127,16 +127,29 @@ export class InsightService {
       rows = result.rows;
     }
 
-    if (rows.length === 0) return [];
-
-    const earliestOccurredAt = Number(rows[0].occurred_at);
-    return rows.map((row) => ({
-      id: row.client_id,
-      type: row.type,
-      intensity: row.intensity,
-      moodTag: row.mood_tag || undefined,
-      dayOffset: Math.floor((Number(row.occurred_at) - earliestOccurredAt) / 86400000),
-      contactToken: row.contact_token || undefined,
-    }));
+    return mapRowsToEventSummaries(rows);
   }
+}
+
+export function mapRowsToEventSummaries(
+  rows: {
+    client_id: string;
+    type: string;
+    intensity: number;
+    mood_tag?: string | null;
+    occurred_at: number | string;
+    contact_token?: string | null;
+  }[]
+): AnonymizedEventSummary[] {
+  if (rows.length === 0) return [];
+
+  const earliestOccurredAt = Number(rows[0].occurred_at);
+  return rows.map((row) => ({
+    id: row.client_id,
+    type: row.type,
+    intensity: row.intensity,
+    moodTag: row.mood_tag || undefined,
+    dayOffset: Math.floor((Number(row.occurred_at) - earliestOccurredAt) / 86400000),
+    contactToken: row.contact_token || undefined,
+  }));
 }

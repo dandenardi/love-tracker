@@ -41,11 +41,26 @@ This is the only moment that constitutes a "deploy." Local `expo start` and `eas
 - Never add entries for local dev or preview builds
 - Entries should be user-facing and meaningful (skip chores, refactors, and infra-only changes unless they affect the user experience)
 
+## Testing discipline
+
+**Server** (`server/`):
+- Unit tests (`server/services/__tests__/*.test.ts`, run via `npm test`): mock `pool.query` (see the `jest.mock('../../db/pool', ...)` pattern already in use), no external dependencies. Add one for any new service logic with non-trivial branching or a hand-written SQL query worth a regression guard.
+- Integration tests (`server/__tests__/integration/*.test.ts`, run via `npm run test:integration`): hit the real Express app (`server/app.ts`) through `supertest` against a real Postgres (`server/docker-compose.test.yml` + `server/.env.test`, documented in `server/README.md`). Add or extend these for any new multi-request flow with state that changes across requests (pairing, sync, notifications, entitlements) — this is the level that actually catches bugs like the poke/unpair ones (mocked-`pool` unit tests can't).
+
+**Mobile** (`mobile/`):
+- `npm test` (Jest + jest-expo): add tests for new pure functions/logic, especially anything extracted out of a store for testability (see `mobile/src/services/syncPrivacy.ts`, `teaserInsight.ts` as the established pattern). Skip testing UI components wired to native modules — mocking cost there outweighs the value.
+
+**Rules:**
+- Every implementation task ends with `npm test` passing in both `mobile/` and `server/` — don't report a task done with failing or unrun tests.
+- If the task touched a multi-step server flow (auth, pairing, sync, pokes, entitlements), also run `npm run test:integration` in `server/` (`npm run db:test:up` first if the test Postgres container isn't already running).
+- New non-trivial logic gets a test in the same task, not as a follow-up. Keep it minimal — cover the risky/branchy part, not every line.
+
 ## Before finishing any task
 
-1. Check whether the change is user-visible or affects the deployment flow
-2. If yes, add a bullet to the `[Unreleased]` section in `CHANGELOG.md`
-3. If the change affects setup, architecture, or running the project, update `mobile/README.md` accordingly
+1. Run the relevant test suites per Testing discipline above
+2. Check whether the change is user-visible or affects the deployment flow
+3. If yes, add a bullet to the `[Unreleased]` section in `CHANGELOG.md`
+4. If the change affects setup, architecture, or running the project, update `mobile/README.md` (or `server/README.md` for server-only changes) accordingly
 
 ## Key files
 
@@ -56,3 +71,5 @@ This is the only moment that constitutes a "deploy." Local `expo start` and `eas
 | `mobile/eas.json` | EAS build profiles; `autoIncrement: true` for production |
 | `mobile/src/app/(tabs)/settings.tsx` | Settings screen; displays version via `Constants.expoConfig?.version` |
 | `CHANGELOG.md` | Deploy-gated changelog |
+| `server/jest.config.js` / `server/jest.integration.config.js` | Server unit vs. integration test configs |
+| `server/README.md` | How to run server unit and integration tests |
