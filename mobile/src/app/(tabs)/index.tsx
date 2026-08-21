@@ -57,9 +57,9 @@ function EventButton({
 
 // ── Contact Pill ────────────────────────────────────────────────────────────
 function ContactPill({
-  name, emoji, color, active, onPress,
+  name, emoji, color, active, unpaired, unpairedLabel, onPress,
 }: {
-  name: string; emoji: string; color: string; active: boolean; onPress: () => void;
+  name: string; emoji: string; color: string; active: boolean; unpaired?: boolean; unpairedLabel?: string; onPress: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -67,15 +67,19 @@ function ContactPill({
     <TouchableOpacity
       style={[
         styles.pill,
-        {
-          backgroundColor: active ? color + '30' : c.surface,
-          borderColor: active ? color : c.border,
-        },
+        unpaired
+          ? { backgroundColor: c.surface, borderColor: c.border, opacity: 0.55 }
+          : {
+              backgroundColor: active ? color + '30' : c.surface,
+              borderColor: active ? color : c.border,
+            },
       ]}
       onPress={onPress}
     >
       <Text style={{ fontSize: 16 }}>{emoji}</Text>
-      <Text style={[styles.pillText, { color: active ? color : c.textSecondary }]}>{name}</Text>
+      <Text style={[styles.pillText, { color: unpaired ? c.textMuted : active ? color : c.textSecondary }]}>
+        {name}{unpaired ? ` · ${unpairedLabel}` : ''}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -233,16 +237,27 @@ export default function HomeScreen() {
             active={soloModeActive}
             onPress={() => setSoloMode(true)}
           />
-          {contacts.map((contact) => (
-            <ContactPill
-              key={contact.id}
-              name={contact.nickname ?? contact.name}
-              emoji={contact.avatar_emoji}
-              color={contact.color}
-              active={!soloModeActive && contact.id === activeContactId}
-              onPress={() => setActiveContact(contact.id)}
-            />
-          ))}
+          {contacts.map((contact) => {
+            // A partner-linked contact whose partnership is no longer active (unpaired,
+            // but not yet "forgotten") — still shown so local history stays reachable,
+            // but should read as disconnected rather than an active partner.
+            const isUnpairedPartner =
+              !!contact.partner_user_id &&
+              !partners.some((p) => p.id === contact.partner_user_id && p.status === 'active');
+
+            return (
+              <ContactPill
+                key={contact.id}
+                name={contact.nickname ?? contact.name}
+                emoji={contact.avatar_emoji}
+                color={contact.color}
+                active={!soloModeActive && contact.id === activeContactId}
+                unpaired={isUnpairedPartner}
+                unpairedLabel={t('settings.unpaired')}
+                onPress={() => setActiveContact(contact.id)}
+              />
+            );
+          })}
         </ScrollView>
 
         {!soloModeActive && contacts.length === 0 ? (

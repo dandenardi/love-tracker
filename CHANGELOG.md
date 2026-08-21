@@ -10,6 +10,9 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+### Fixed
+- The contact strip on the home screen now shows when a partner is no longer paired, instead of looking identical to an active partner
+
 ---
 
 ## [1.0.13] - 2026-08-18
