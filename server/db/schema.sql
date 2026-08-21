@@ -10,6 +10,7 @@ CREATE TABLE users (
   invite_plain        TEXT,
   invite_expires      BIGINT,
   push_token          TEXT,
+  locale              TEXT NOT NULL DEFAULT 'en',
   ai_insights_opt_in  BOOLEAN NOT NULL DEFAULT false,
   premium_active      BOOLEAN NOT NULL DEFAULT false,
   premium_expires_at  BIGINT,

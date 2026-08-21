@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import '@/i18n';
+import i18n from '@/i18n';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMPORTANT: definePokeBackgroundTask() must be at module scope (outside any
@@ -75,6 +75,7 @@ function AppContent() {
   const userId = useSyncStore((s) => s.userId);
   const partners = useSyncStore((s) => s.partners);
   const registerPushToken = useSyncStore((s) => s.registerPushToken);
+  const registerLocale = useSyncStore((s) => s.registerLocale);
   const slots = usePokeStore((s) => s.slots);
   const isPokeStoreHydrated = usePokeStore((s) => s.isHydrated);
 
@@ -152,6 +153,15 @@ function AppContent() {
         console.error('[_layout] Push token registration error:', err.message);
       }
     })();
+  }, [userId]);
+
+  // Sync the app's current language to the server — runs once when userId is
+  // available, so push notifications can be composed in it.
+  useEffect(() => {
+    if (!userId) return;
+    registerLocale(i18n.language).catch((err: any) =>
+      console.error('[_layout] Locale registration error:', err.message)
+    );
   }, [userId]);
 
   // Set up persistent poke notification — waits for isPokeStoreHydrated so the

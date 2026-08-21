@@ -831,7 +831,10 @@ function SettingsScreen() {
           {LANGUAGES.map((lang, idx) => (
             <SettingRow key={lang.code} label={lang.label} last={idx === LANGUAGES.length - 1}>
               <TouchableOpacity
-                onPress={() => setLanguage(lang.code)}
+                onPress={() => {
+                  setLanguage(lang.code);
+                  useSyncStore.getState().registerLocale(lang.code);
+                }}
                 style={[styles.chip, { borderColor: i18n.language === lang.code ? c.primary : c.border, backgroundColor: i18n.language === lang.code ? c.primary + '25' : 'transparent' }]}
               >
                 <Text style={{ color: i18n.language === lang.code ? c.primary : c.textMuted, fontSize: 12, fontWeight: '600' }}>

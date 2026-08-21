@@ -2,11 +2,19 @@ jest.mock('../../db/pool', () => ({
   __esModule: true,
   default: { query: jest.fn() },
 }));
+jest.mock('../notificationService', () => ({
+  sendExpoPushNotification: jest.fn(),
+}));
+jest.mock('../../socket', () => ({
+  socketManager: { emitToUser: jest.fn() },
+}));
 
 import pool from '../../db/pool';
+import { sendExpoPushNotification } from '../notificationService';
 import { PokeService } from '../pokeService';
 
 const mockQuery = pool.query as jest.Mock;
+const mockSendPush = sendExpoPushNotification as jest.Mock;
 
 describe('PokeService.getPokes', () => {
   it('joins partnerships and only returns pokes from an active partnership', async () => {
@@ -50,5 +58,25 @@ describe('PokeService.getPokes', () => {
         readAt: undefined,
       },
     ]);
+  });
+});
+
+describe('PokeService.sendPoke', () => {
+  it('composes the push notification body in the recipient locale, not the sender locale', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ partnership_id: 'partnership-1' }] }) // active partnership check
+      .mockResolvedValueOnce({ rows: [{ id: 'poke-1' }] }) // INSERT INTO pokes
+      .mockResolvedValueOnce({ rows: [{ alias: 'Ana' }] }) // sender alias
+      .mockResolvedValueOnce({ rows: [{ push_token: 'ExponentPushToken[xxx]', locale: 'pt' }] }); // recipient
+
+    await PokeService.sendPoke('user-1', { partnerId: 'user-2', message: 'MISS_YOU', emoji: '💌' });
+
+    expect(mockSendPush).toHaveBeenCalledWith(
+      'ExponentPushToken[xxx]',
+      'Ana',
+      '💌 Ana te enviou um toque!',
+      expect.anything(),
+      'POKE_CATEGORY'
+    );
   });
 });

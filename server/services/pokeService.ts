@@ -2,6 +2,7 @@ import pool from '../db/pool';
 import { PokePayload, Poke } from '../shared';
 import { sendExpoPushNotification } from './notificationService';
 import { socketManager } from '../socket';
+import { normalizeLocale, pokeSentBody, pokeDeliveredBody } from './pushTemplates';
 
 export class PokeService {
   /**
@@ -41,18 +42,19 @@ export class PokeService {
     // 3. Fetch sender alias and recipient push token
     const [senderResult, recipientResult] = await Promise.all([
       pool.query('SELECT alias FROM users WHERE id = $1', [senderId]),
-      pool.query('SELECT push_token FROM users WHERE id = $1', [partnerId]),
+      pool.query('SELECT push_token, locale FROM users WHERE id = $1', [partnerId]),
     ]);
 
     const senderAlias = senderResult.rows[0]?.alias || 'Your partner';
     const recipientToken = recipientResult.rows[0]?.push_token;
+    const recipientLocale = normalizeLocale(recipientResult.rows[0]?.locale);
 
     // 4. Send push notification (fire-and-forget)
     if (recipientToken) {
       await sendExpoPushNotification(
         recipientToken,
         senderAlias,
-        `${emoji} ${senderAlias} sent you a poke!`,
+        pokeSentBody(recipientLocale, senderAlias, emoji),
         { type: 'poke', pokeId, senderId, recipientId: partnerId, partnerId: senderId, message, emoji },
         'POKE_CATEGORY'
       );
@@ -128,17 +130,18 @@ export class PokeService {
         // Send push notification to sender: "Partner received your poke!"
         const [recipientResult, senderResult] = await Promise.all([
           pool.query('SELECT alias FROM users WHERE id = $1', [userId]),
-          pool.query('SELECT push_token FROM users WHERE id = $1', [sender_id]),
+          pool.query('SELECT push_token, locale FROM users WHERE id = $1', [sender_id]),
         ]);
 
         const recipientAlias = recipientResult.rows[0]?.alias || 'Your partner';
         const senderToken = senderResult.rows[0]?.push_token;
+        const senderLocale = normalizeLocale(senderResult.rows[0]?.locale);
 
         if (senderToken) {
           await sendExpoPushNotification(
             senderToken,
             recipientAlias,
-            `${recipientAlias} just received your poke! Want to reply?`,
+            pokeDeliveredBody(senderLocale, recipientAlias),
             { type: 'poke_delivered', pokeId, partnerId: userId, partnerName: recipientAlias },
             'POKE_CATEGORY'
           );

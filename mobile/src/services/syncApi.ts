@@ -179,6 +179,11 @@ export const authApi = {
 
   forgetPartner: (partnerId: string) =>
     request<{ status: string }>(`/auth/partnership/${partnerId}`, { method: 'DELETE' }),
+
+  updateLocale: (locale: string) => request<{ status: string }>('/auth/locale', {
+    method: 'POST',
+    body: JSON.stringify({ locale }),
+  }),
 };
 
 export const syncApi = {

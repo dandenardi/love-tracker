@@ -85,6 +85,19 @@ router.post('/push-token', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/locale', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { locale } = req.body;
+    if (!locale || typeof locale !== 'string') {
+      return res.status(400).json({ error: 'locale is required' });
+    }
+    await AuthService.updateLocale(req.user!.id, locale);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.delete('/account', authenticateToken, async (req: AuthRequest, res) => {
   try {
     await AuthService.deleteAccount(req.user!.id);

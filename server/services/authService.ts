@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import pool from '../db/pool';
 import { RegisterPayload, LoginPayload, AuthResponse, RefreshResponse, PairResponse, Partner } from '../shared';
+import { normalizeLocale } from './pushTemplates';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -150,6 +151,13 @@ export class AuthService {
       [token, userId]
     );
     console.log('[AuthService] Push token saved for user:', userId.substring(0, 8));
+  }
+
+  static async updateLocale(userId: string, locale: string): Promise<void> {
+    await pool.query(
+      'UPDATE users SET locale = $1 WHERE id = $2',
+      [normalizeLocale(locale), userId]
+    );
   }
 
   static async unpair(userId: string, partnerId: string): Promise<void> {

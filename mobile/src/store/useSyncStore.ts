@@ -70,6 +70,8 @@ interface SyncState {
   sync: () => Promise<void>;
   /** Save the Expo push token to state and register it on the server */
   registerPushToken: (token: string) => Promise<void>;
+  /** Sync the app's current language to the server, so push notifications use it */
+  registerLocale: (locale: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
   forgetPartner: (partnerId: string, wipeHistory: boolean) => Promise<void>;
 }
@@ -225,6 +227,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       AsyncStorage.removeItem(`${STORAGE_KEY}/partners`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/lastSyncedAt`),
       AsyncStorage.removeItem(`${STORAGE_KEY}/pushToken`),
+      AsyncStorage.removeItem(`${STORAGE_KEY}/locale`),
     ]);
     set({ userId: null, alias: null, partners: [], lastSyncedAt: 0, pushToken: null });
   },
@@ -260,6 +263,18 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       console.log('[SyncStore] Push token registered on server successfully.');
     } catch (err: any) {
       console.error('[SyncStore] Failed to register push token:', err.message);
+    }
+  },
+
+  registerLocale: async (locale: string) => {
+    const lastSynced = await AsyncStorage.getItem(`${STORAGE_KEY}/locale`);
+    if (lastSynced === locale) return;
+
+    try {
+      await authApi.updateLocale(locale);
+      await AsyncStorage.setItem(`${STORAGE_KEY}/locale`, locale);
+    } catch (err: any) {
+      console.error('[SyncStore] Failed to register locale:', err.message);
     }
   },
 

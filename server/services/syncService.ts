@@ -3,17 +3,7 @@ import { ServerEvent, SyncPullResponse } from '../shared';
 import { AuthService } from './authService';
 import { sendExpoPushNotification } from './notificationService';
 import { socketManager } from '../socket';
-
-/** Human-readable label + emoji for each event type key */
-const EVENT_TYPE_LABELS: Record<string, { label: string; emoji: string }> = {
-  INTIMACY:  { label: 'Intimacy',  emoji: '🔥' },
-  FIGHT:     { label: 'Fight',     emoji: '⚡' },
-  AFFECTION: { label: 'Affection', emoji: '❤️' },
-  DATE:      { label: 'Date',      emoji: '🌙' },
-  SPECIAL:   { label: 'Special',   emoji: '⭐' },
-  MILESTONE: { label: 'Milestone', emoji: '💋' },
-  CUSTOM:    { label: 'Custom',    emoji: '✏️' },
-};
+import { normalizeLocale, eventLoggedBody } from './pushTemplates';
 
 export class SyncService {
   static async pushEvents(userId: string, events: ServerEvent[]): Promise<void> {
@@ -74,14 +64,10 @@ export class SyncService {
       // Fire push notification to partner (once per partnership, not per event)
       if (!notifiedPartnershipIds.has(event.partnershipId)) {
         notifiedPartnershipIds.add(event.partnershipId);
-        const typeInfo = EVENT_TYPE_LABELS[event.type] || { label: event.type, emoji: '📝' };
-        const notifBody = isNew
-          ? `${senderAlias} logged ${typeInfo.label} ${typeInfo.emoji}`
-          : `${senderAlias} updated ${typeInfo.label} ${typeInfo.emoji}`;
 
-        // Get partner's ID and push token from the partnership
+        // Get partner's ID, push token and locale from the partnership
         const partnerInfoResult = await pool.query(
-          `SELECT u.id as partner_id, u.push_token FROM users u
+          `SELECT u.id as partner_id, u.push_token, u.locale FROM users u
            JOIN partnerships p ON (p.user_id_1 = u.id OR p.user_id_2 = u.id)
            WHERE p.id = $1 AND u.id != $2 AND p.status = 'active'`,
           [event.partnershipId, userId]
@@ -89,6 +75,7 @@ export class SyncService {
 
         for (const row of partnerInfoResult.rows) {
           if (row.push_token) {
+            const notifBody = eventLoggedBody(normalizeLocale(row.locale), !isNew, event.type, senderAlias);
             // fire-and-forget — do not await to avoid slowing the sync response
             sendExpoPushNotification(
               row.push_token,
@@ -97,7 +84,7 @@ export class SyncService {
               { type: 'event_sync', eventType: event.type }
             );
           }
-          
+
           // Real-time socket event
           socketManager.emitToUser(row.partner_id, 'data_changed', {
             type: 'event_sync',
