@@ -31,6 +31,7 @@ router.post('/google-login', async (req, res) => {
     const response = await AuthService.googleLogin(idToken);
     res.json(response);
   } catch (e: any) {
+    console.error('[Auth] Google login failed:', e.message);
     res.status(401).json({ error: e.message });
   }
 });
