@@ -20,5 +20,7 @@ services:
         generateValue: true
       - key: ANTHROPIC_API_KEY
         sync: false # User must set this manually in Render
+      - key: GOOGLE_CLIENT_ID
+        sync: false # User must set this manually in Render — Web OAuth client ID (type 3) from google-services.json, used to verify Google Sign-In id_tokens
       - key: REVENUECAT_WEBHOOK_SECRET
         sync: false # User must set this manually in Render
