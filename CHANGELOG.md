@@ -10,6 +10,10 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+---
+
+## [1.0.14] - 2026-08-21
+
 ### Fixed
 - The contact strip on the home screen now shows when a partner is no longer paired, instead of looking identical to an active partner
 - Push notifications (pokes, partner activity) now arrive in your selected language instead of always in English
