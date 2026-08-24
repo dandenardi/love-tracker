@@ -15,6 +15,7 @@ import { useSyncStore } from '@/store/useSyncStore';
 import { useContactsStore } from '@/store/useContactsStore';
 import { usePokeStore } from '@/store/usePokeStore';
 import { useEntitlementStore } from '@/store/useEntitlementStore';
+import { AdBanner } from '@/components/AdBanner';
 import { restorePurchases as restorePurchasesRC } from '@/services/purchases';
 import { PokeMessage, schedulePokeNotification, registerPokeCategory } from '@/services/notificationService';
 import { setLanguage } from '@/i18n';
@@ -908,6 +909,7 @@ function SettingsScreen() {
           {t('settings.versionDisplay', { version: Constants.expoConfig?.version ?? Application.nativeApplicationVersion ?? '—' })}
         </Text>
       </ScrollView>
+      <AdBanner />
     </SafeAreaView>
   );
 }

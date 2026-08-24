@@ -45,6 +45,7 @@ import { useSyncStore } from '@/store/useSyncStore';
 import { usePokeStore } from '@/store/usePokeStore';
 import { useEntitlementStore } from '@/store/useEntitlementStore';
 import { initPurchases } from '@/services/purchases';
+import mobileAds from 'react-native-google-mobile-ads';
 import { View, ActivityIndicator, AppState } from 'react-native';
 import { useSocketStore } from '@/store/useSocketStore';
 import {
@@ -128,6 +129,11 @@ function AppContent() {
     initPurchases(userId);
     useEntitlementStore.getState().refresh();
   }, [userId]);
+
+  // AdMob SDK init — not tied to a logged-in user
+  useEffect(() => {
+    mobileAds().initialize();
+  }, []);
 
   // Register background task when the JS thread is idle — on Android the native
   // SharedPreferences context isn't ready until the first render cycle completes.

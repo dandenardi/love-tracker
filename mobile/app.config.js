@@ -21,9 +21,18 @@ const config = ({ config }) => {
       ...config.extra,
       apiUrl: process.env.API_URL,
       revenueCatAndroidKey: process.env.REVENUECAT_ANDROID_KEY,
+      admobBannerUnitId: process.env.ADMOB_BANNER_UNIT_ID_ANDROID,
     },
     plugins: [
       "@react-native-google-signin/google-signin",
+      [
+        "react-native-google-mobile-ads",
+        {
+          // Falls back to Google's official test App ID until ADMOB_ANDROID_APP_ID is set
+          // as an EAS env var (see server-side pattern used for REVENUECAT_ANDROID_KEY).
+          androidAppId: process.env.ADMOB_ANDROID_APP_ID || "ca-app-pub-3940256099942544~3347511713",
+        },
+      ],
       ...(config.plugins || []),
       [
         "expo-build-properties",

@@ -7,6 +7,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useContactsStore } from '@/store/useContactsStore';
 import { useEventsStore } from '@/store/useEventsStore';
 import { useEntitlementStore } from '@/store/useEntitlementStore';
+import { AdBanner } from '@/components/AdBanner';
 import { EVENT_TYPES } from '@/constants/eventTypes';
 import { getEventCountByType, getDaysSinceLast } from '@/db/events';
 
@@ -176,6 +177,7 @@ export default function StatsScreen() {
           ))}
         </View>
       </ScrollView>
+      <AdBanner />
     </SafeAreaView>
   );
 }
