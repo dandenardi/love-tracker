@@ -10,6 +10,10 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+---
+
+## [1.0.16] - 2026-08-27
+
 ### Added
 - Small banner ad on the Stats and Settings screens (never on Home, Timeline, or event logging) — hidden entirely for premium accounts
 
