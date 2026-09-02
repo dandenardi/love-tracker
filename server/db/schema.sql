@@ -12,6 +12,7 @@ CREATE TABLE users (
   push_token          TEXT,
   locale              TEXT NOT NULL DEFAULT 'en',
   ai_insights_opt_in  BOOLEAN NOT NULL DEFAULT false,
+  ai_insight_last_generated_at BIGINT,
   premium_active      BOOLEAN NOT NULL DEFAULT false,
   premium_expires_at  BIGINT,
   created_at          BIGINT NOT NULL
@@ -66,14 +67,15 @@ CREATE TABLE pokes (
 );
 
 CREATE TABLE ai_insights (
-  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id            UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  domain             TEXT NOT NULL CHECK (domain IN ('solo', 'couple')),
-  title              TEXT NOT NULL,
-  body               TEXT NOT NULL,
-  evidence_event_ids TEXT[] NOT NULL DEFAULT '{}',
-  confidence         TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
-  generated_at       BIGINT NOT NULL,
+  id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  domain                      TEXT NOT NULL CHECK (domain IN ('solo', 'couple', 'profile')),
+  title                       TEXT NOT NULL,
+  body                        TEXT NOT NULL,
+  evidence_event_ids          TEXT[] NOT NULL DEFAULT '{}',
+  evidence_relationship_ids   TEXT[],
+  confidence                  TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+  generated_at                BIGINT NOT NULL,
   UNIQUE(user_id, domain)
 );
 

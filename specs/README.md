@@ -34,11 +34,15 @@ itself plus a shallow teaser insight.
 | [004](004-private-event-backup-sync/spec.md) | Private Event Backup Sync — server-side backup for private/unlinked events, scoped to the owning user, never partner-visible | none (fixes a pre-existing gap surfaced while writing 001; applies to couple-mode private events too) |
 | [005](005-deletion-sync/spec.md) | Deletion Sync — deleting an event actually propagates to the server (soft-delete + tombstone), instead of only ever deleting locally | 004 (adds `ownDeletedIds` alongside 004's `ownEvents`, same query shape) |
 | [006](006-pseudonymous-contact-tokens/spec.md) | Pseudonymous Contact Tokens — one-way hashed per-contact tag so solo insights can detect person-specific patterns without the server ever learning contact identity | 002 (fills a gap discovered in its implementation) — **implemented** |
+| [007](007-insight-time-windowing/spec.md) | Time-Windowed AI Insights — optional date-range scoping for an insight request, instead of always the full history | 002 (closes its Open Question 3, "windowing," never implemented in the first pass) |
+| [008](008-relationship-profile/spec.md) | Relationship Profile — new `profile` insight domain finding patterns that recur across a user's different relationships/contacts over time, not within just one | 002, 006 (uses `contactToken` grouping; extends it with an equivalent hashed key for partnerships) |
 
 001 → 002 → 003 is the natural build order, not a hard requirement — 002 can be prototyped
 against existing contact-linked events before 001 ships, but the full solo-mode value
 proposition needs 001 first. 004 is a durability fix that should land before real users start
-relying on Solo Diary or private couple events, independent of the AI/monetization track.
+relying on Solo Diary or private couple events, independent of the AI/monetization track. 007
+and 008 are both extensions of 002's already-shipped engine — either can be implemented
+independently of the other.
 
 ## Cross-cutting principles (inherited from `AGENTS.md` / `CLAUDE.md`)
 

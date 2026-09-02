@@ -104,10 +104,11 @@
     "title": "AI Insights",
     "cardSubtitle": "Discover patterns in your relationship history",
     "consentTitle": "Unlock AI Insights",
-    "consentBody": "Your logged events (never your private notes) are sent to Claude, our AI provider, to find patterns you might not notice yourself. This never leaves your account and is never shared with a partner.",
+    "consentBody": "Your logged events (never your private notes) are sent to Claude, our AI provider, to find patterns you might not notice yourself — including patterns across past relationships. This never leaves your account and is never shared with a partner.",
     "enable": "Enable AI Insights",
     "domainSolo": "Solo",
     "domainCouple": "Couple",
+    "domainProfile": "Your Relationship Pattern",
     "confidence": {
       "low": "Low confidence",
       "medium": "Medium confidence",
@@ -115,9 +116,21 @@
     },
     "evidenceCount": "Based on {{count}} logged events",
     "evidenceCount_one": "Based on {{count}} logged event",
+    "evidenceRelationshipCount": "Based on patterns across {{count}} relationships",
     "notEnoughData": "Log a few more events to unlock this — you have {{count}} of {{threshold}} needed.",
+    "notEnoughRelationships": "Log events in at least {{threshold}} different relationships to unlock this — you have {{count}} so far.",
     "noPartner": "You need an active partner connection to see couple insights.",
-    "teaser": "This month you logged {{count}} {{type}} events — the most of any type."
+    "rateLimited": "You've already generated an insight today. Try again tomorrow.",
+    "teaser": "This month you logged {{count}} {{type}} events — the most of any type.",
+    "period": {
+      "all": "Full history",
+      "last30": "Last 30 days",
+      "last3Months": "Last 3 months",
+      "last6Months": "Last 6 months",
+      "custom": "Custom",
+      "from": "From",
+      "to": "To"
+    }
   },
   "paywall": {
     "title": "Premium",

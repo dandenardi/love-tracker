@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 
-export type InsightDomain = 'solo' | 'couple';
+export type InsightDomain = 'solo' | 'couple' | 'profile';
 
 /**
  * Structured, privacy-minimized event data sent to the AI provider.
@@ -21,6 +21,14 @@ export interface AnonymizedEventSummary {
    * specs/006-pseudonymous-contact-tokens.
    */
   contactToken?: string;
+  /**
+   * `profile` domain only — a unified, one-way-hashed grouping key identifying which
+   * relationship an event belongs to (hashed partnership_id for couple-sourced events, or the
+   * existing contactToken for solo/casual ones). Lets the model detect patterns that recur
+   * across different relationshipId values, not just within one. See
+   * specs/008-relationship-profile.
+   */
+  relationshipId?: string;
 }
 
 export interface InsightRequest {
@@ -34,6 +42,8 @@ export interface InsightResult {
   title: string;
   body: string;
   evidenceEventIds: string[];
+  /** `profile` domain only — the relationshipId(s) (hashed) that support this finding. */
+  evidenceRelationshipIds?: string[];
   confidence: 'low' | 'medium' | 'high';
   generatedAt: number;
 }
@@ -48,6 +58,12 @@ const InsightResultSchema = z.object({
   evidenceEventIds: z
     .array(z.string())
     .describe('The `id` values of the input events that support this conclusion. Must be a subset of the ids you were given.'),
+  evidenceRelationshipIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      '"profile" domain ONLY: the `relationshipId` values (2 or more) that support a cross-relationship finding. Omit entirely for "solo"/"couple" domains.'
+    ),
   confidence: z
     .enum(['low', 'medium', 'high'])
     .describe('How confident you are that this reflects a real, recurring pattern rather than noise.'),
@@ -63,7 +79,8 @@ Rules:
 - Write for the user directly, in a warm, non-judgmental, observational tone — never clinical or accusatory.
 - Respond in the language given by the "locale" field (e.g. "pt" = Portuguese, "en" = English).
 - "solo" domain: the user is single/dating casually. Look for patterns in event type frequency, timing, mood, and intensity over time. Some events include a "contactToken" — an opaque tag, never a name or identifier you can interpret. Events sharing the same contactToken are about the same (unnamed) person; use this to detect person-specific recurring patterns (e.g. "you tend to disengage before the 4th date with the same person") in addition to aggregate trends. Never mention the token itself in your output — refer to "someone" or "a person" instead.
-- "couple" domain: the user is in a tracked relationship. The event set already respects their privacy — analyze it as-is.`;
+- "couple" domain: the user is in a tracked relationship. The event set already respects their privacy — analyze it as-is.
+- "profile" domain: events span the user's ENTIRE relationship history — multiple past and/or current relationships and casual dating contacts, pooled together. Every event has a "relationshipId" — an opaque tag, never a name or identifier you can interpret. Your job here is different from "solo"/"couple": do NOT describe something specific to one relationshipId. Only report a pattern that recurs across 2 OR MORE distinct relationshipId values (e.g. timing of conflict, recurring mood dips, a behavioral tendency that shows up regardless of partner). Populate "evidenceRelationshipIds" with every distinct relationshipId that supports the finding (must be 2 or more). If you cannot find a pattern that genuinely recurs across multiple relationshipIds, say so honestly and set confidence to "low" rather than describing a single-relationship pattern as if it were general. Never mention any token itself in your output — refer to "your relationships" or "past partners" instead.`;
 
 export class AnthropicInsightProvider implements AIInsightProvider {
   private client: Anthropic;
@@ -108,10 +125,18 @@ export class AnthropicInsightProvider implements AIInsightProvider {
     const validEventIds = new Set(input.events.map((e) => e.id));
     const evidenceEventIds = response.parsed_output.evidenceEventIds.filter((id) => validEventIds.has(id));
 
+    const validRelationshipIds = new Set(
+      input.events.map((e) => e.relationshipId).filter((id): id is string => !!id)
+    );
+    const evidenceRelationshipIds = response.parsed_output.evidenceRelationshipIds?.filter((id) =>
+      validRelationshipIds.has(id)
+    );
+
     return {
       title: response.parsed_output.title,
       body: response.parsed_output.body,
       evidenceEventIds,
+      evidenceRelationshipIds: evidenceRelationshipIds?.length ? evidenceRelationshipIds : undefined,
       confidence: response.parsed_output.confidence,
       generatedAt: Date.now(),
     };

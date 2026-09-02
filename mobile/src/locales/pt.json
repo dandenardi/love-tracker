@@ -105,10 +105,11 @@
     "title": "Insights de IA",
     "cardSubtitle": "Descubra padrões no seu histórico de relacionamento",
     "consentTitle": "Desbloquear Insights de IA",
-    "consentBody": "Seus eventos registrados (nunca suas notas privadas) são enviados ao Claude, nosso provedor de IA, para encontrar padrões que talvez você não perceba sozinho(a). Isso nunca sai da sua conta e nunca é compartilhado com um parceiro.",
+    "consentBody": "Seus eventos registrados (nunca suas notas privadas) são enviados ao Claude, nosso provedor de IA, para encontrar padrões que talvez você não perceba sozinho(a) — incluindo padrões entre relacionamentos passados. Isso nunca sai da sua conta e nunca é compartilhado com um parceiro.",
     "enable": "Ativar Insights de IA",
     "domainSolo": "Solo",
     "domainCouple": "Casal",
+    "domainProfile": "Seu Padrão em Relacionamentos",
     "confidence": {
       "low": "Confiança baixa",
       "medium": "Confiança média",
@@ -116,9 +117,21 @@
     },
     "evidenceCount": "Baseado em {{count}} eventos registrados",
     "evidenceCount_one": "Baseado em {{count}} evento registrado",
+    "evidenceRelationshipCount": "Baseado em padrões de {{count}} relacionamentos",
     "notEnoughData": "Registre mais alguns eventos para desbloquear isso — você tem {{count}} de {{threshold}} necessários.",
+    "notEnoughRelationships": "Registre eventos em pelo menos {{threshold}} relacionamentos diferentes para desbloquear isso — você tem {{count}} até agora.",
     "noPartner": "Você precisa de uma conexão ativa com um parceiro para ver insights de casal.",
-    "teaser": "Este mês você registrou {{count}} eventos do tipo {{type}} — o mais frequente."
+    "rateLimited": "Você já gerou uma análise hoje. Tente novamente amanhã.",
+    "teaser": "Este mês você registrou {{count}} eventos do tipo {{type}} — o mais frequente.",
+    "period": {
+      "all": "Todo o histórico",
+      "last30": "Últimos 30 dias",
+      "last3Months": "Últimos 3 meses",
+      "last6Months": "Últimos 6 meses",
+      "custom": "Personalizado",
+      "from": "De",
+      "to": "Até"
+    }
   },
   "paywall": {
     "title": "Premium",

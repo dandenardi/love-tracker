@@ -10,6 +10,10 @@ The version format is `MAJOR.MINOR.BUILD` where `BUILD` is the EAS `versionCode`
 
 ## [Unreleased]
 
+### Added
+- AI Insights: optionally scope an analysis to a specific period (last 30/90/180 days, or a custom range) instead of always your full history
+- New "Seu Padrão em Relacionamentos" insight — finds behavioral patterns that recur across your different relationships and dating history over time, not just within one
+
 ---
 
 ## [1.0.16] - 2026-08-27

@@ -250,11 +250,20 @@ export const insightsApi = {
       body: JSON.stringify({ optIn }),
     }),
 
-  /** Fetch (or generate, if the daily cache is stale) an insight for a domain. */
-  get: (domain: InsightDomain, locale: string) =>
-    request<InsightResponse>(`/insights/${domain}?locale=${locale}`, {
+  /**
+   * Fetch (or generate, if the cache is stale) an insight for a domain. `from`/`to` (epoch ms)
+   * optionally scope the analysis to a specific period — solo/couple only, spec 007. Omitted =
+   * full history. Not supported for the `profile` domain (spec 008 has its own 7-day cadence
+   * instead).
+   */
+  get: (domain: InsightDomain, locale: string, from?: number, to?: number) => {
+    const params = new URLSearchParams({ locale });
+    if (from !== undefined) params.set('from', String(from));
+    if (to !== undefined) params.set('to', String(to));
+    return request<InsightResponse>(`/insights/${domain}?${params.toString()}`, {
       method: 'GET',
-    }),
+    });
+  },
 };
 
 export const entitlementsApi = {

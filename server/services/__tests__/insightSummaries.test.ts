@@ -2,7 +2,7 @@ jest.mock('../aiInsightProvider', () => ({
   AnthropicInsightProvider: jest.fn().mockImplementation(() => ({})),
 }));
 
-import { mapRowsToEventSummaries } from '../insightService';
+import { mapRowsToEventSummaries, countQualifyingRelationships } from '../insightService';
 
 describe('mapRowsToEventSummaries', () => {
   it('returns an empty array for no rows', () => {
@@ -36,5 +36,45 @@ describe('mapRowsToEventSummaries', () => {
     expect(result[0].contactToken).toBeUndefined();
     expect(result[1].moodTag).toBe('happy');
     expect(result[1].contactToken).toBe('tok-1');
+  });
+
+  it('carries relationship_id through to relationshipId (spec 008)', () => {
+    const rows = [
+      { client_id: 'a', type: 'FIGHT', intensity: 4, occurred_at: 1700000000000, relationship_id: 'hash-1' },
+      { client_id: 'b', type: 'FIGHT', intensity: 4, occurred_at: 1700000000000, relationship_id: null },
+    ];
+
+    const result = mapRowsToEventSummaries(rows);
+
+    expect(result[0].relationshipId).toBe('hash-1');
+    expect(result[1].relationshipId).toBeUndefined();
+  });
+});
+
+describe('countQualifyingRelationships', () => {
+  it('returns 0 for an empty list', () => {
+    expect(countQualifyingRelationships([], 3)).toBe(0);
+  });
+
+  it('only counts relationships meeting the minimum event count', () => {
+    const rows = [
+      { relationship_id: 'r1' },
+      { relationship_id: 'r1' },
+      { relationship_id: 'r1' }, // r1: 3 events, qualifies at threshold 3
+      { relationship_id: 'r2' },
+      { relationship_id: 'r2' }, // r2: 2 events, does not qualify
+      { relationship_id: 'r3' },
+      { relationship_id: 'r3' },
+      { relationship_id: 'r3' },
+      { relationship_id: 'r3' }, // r3: 4 events, qualifies
+    ];
+
+    expect(countQualifyingRelationships(rows, 3)).toBe(2);
+  });
+
+  it('ignores rows with no relationship_id', () => {
+    const rows = [{ relationship_id: null }, { relationship_id: undefined }, { relationship_id: 'r1' }];
+
+    expect(countQualifyingRelationships(rows, 1)).toBe(1);
   });
 });

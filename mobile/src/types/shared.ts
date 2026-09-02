@@ -157,15 +157,17 @@ export interface SavePushTokenPayload {
   token: string;
 }
 
-// ── AI Insights (spec 002) ──────────────────────────────────────────────────
+// ── AI Insights (spec 002, extended by specs 007/008) ───────────────────────
 
-export type InsightDomain = 'solo' | 'couple';
+export type InsightDomain = 'solo' | 'couple' | 'profile';
 
 export interface AIInsight {
   title: string;
   body: string;
   /** Event client_ids supporting this insight — matches local event ids on-device. */
   evidenceEventIds: string[];
+  /** `profile` domain only — the relationshipIds (hashed) that support this finding. */
+  evidenceRelationshipIds?: string[];
   confidence: 'low' | 'medium' | 'high';
   generatedAt: number;
 }
@@ -175,7 +177,11 @@ export type InsightResponse =
   | { status: 'consent_required' }
   | { status: 'premium_required' }
   | { status: 'not_enough_data'; eventCount: number; threshold: number }
-  | { status: 'no_partner' };
+  /** `profile` domain only — spec 008. */
+  | { status: 'not_enough_relationships'; relationshipCount: number; threshold: number }
+  | { status: 'no_partner' }
+  /** Period-scoped request (spec 007) hit the shared daily generation throttle. */
+  | { status: 'rate_limited' };
 
 export interface InsightConsentPayload {
   optIn: boolean;

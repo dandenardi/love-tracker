@@ -22,11 +22,16 @@ router.post('/consent', async (req: AuthRequest, res) => {
 router.get('/:domain', async (req: AuthRequest, res) => {
   try {
     const { domain } = req.params;
-    if (domain !== 'solo' && domain !== 'couple') {
-      return res.status(400).json({ error: 'domain must be "solo" or "couple"' });
+    if (domain !== 'solo' && domain !== 'couple' && domain !== 'profile') {
+      return res.status(400).json({ error: 'domain must be "solo", "couple", or "profile"' });
     }
     const locale = (req.query.locale as string) || 'en';
-    const outcome = await InsightService.generateOrGetInsight(req.user!.id, domain, locale);
+    const from = req.query.from !== undefined ? Number(req.query.from) : undefined;
+    const to = req.query.to !== undefined ? Number(req.query.to) : undefined;
+    if (domain === 'profile' && (from !== undefined || to !== undefined)) {
+      return res.status(400).json({ error: 'from/to are not supported for the profile domain' });
+    }
+    const outcome = await InsightService.generateOrGetInsight(req.user!.id, domain, locale, from, to);
     res.json(outcome);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
