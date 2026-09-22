@@ -282,6 +282,9 @@
     "login": "Entrar",
     "register": "Cadastrar",
     "createAccount": "Criar Conta",
-    "continueWithGoogle": "Continuar com Google"
+    "continueWithGoogle": "Continuar com Google",
+    "forgotPassword": "Esqueceu a senha?",
+    "forgotPasswordEmailRequired": "Digite seu e-mail acima primeiro",
+    "forgotPasswordSent": "Se esse e-mail estiver cadastrado, enviamos um link de redefinição. Confira sua caixa de entrada."
   }
 }

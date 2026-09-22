@@ -24,3 +24,9 @@ services:
         sync: false # User must set this manually in Render — Web OAuth client ID (type 3) from google-services.json, used to verify Google Sign-In id_tokens
       - key: REVENUECAT_WEBHOOK_SECRET
         sync: false # User must set this manually in Render
+      - key: RESEND_API_KEY
+        sync: false # User must set this manually in Render
+      - key: EMAIL_FROM
+        sync: false # User must set this manually in Render — e.g. "Love Tracker <noreply@yourdomain.com>"
+      - key: PUBLIC_APP_URL
+        sync: false # User must set this manually in Render — this service's own public URL, used to build password-reset links

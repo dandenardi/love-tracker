@@ -1,10 +1,14 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes, createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import pool from '../db/pool';
 import { RegisterPayload, LoginPayload, AuthResponse, RefreshResponse, PairResponse, Partner } from '../shared';
 import { normalizeLocale } from './pushTemplates';
+import { sendPasswordResetEmail } from './emailService';
+
+const PASSWORD_RESET_EXPIRE_MS = 30 * 60 * 1000;
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -91,6 +95,45 @@ export class AuthService {
     );
 
     return { accessToken };
+  }
+
+  static async requestPasswordReset(email: string): Promise<void> {
+    const result = await pool.query('SELECT id, email FROM users WHERE email = $1', [email.toLowerCase()]);
+    const user = result.rows[0];
+    if (!user) return; // Swallow silently — caller always returns a generic response (avoids email enumeration)
+
+    // Invalidate any previous outstanding tokens for this user so an old leaked link stops working
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL', [user.id]);
+
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = Date.now() + PASSWORD_RESET_EXPIRE_MS;
+
+    await pool.query(
+      'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4)',
+      [user.id, tokenHash, expiresAt, Date.now()]
+    );
+
+    const resetUrl = `${process.env.PUBLIC_APP_URL}/auth/reset-password?token=${rawToken}`;
+    await sendPasswordResetEmail(user.email, resetUrl);
+  }
+
+  static async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const result = await pool.query('SELECT * FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
+    const row = result.rows[0];
+
+    if (!row || row.used_at || BigInt(row.expires_at) < BigInt(Date.now())) {
+      throw new Error('Invalid or expired reset link');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, row.user_id]);
+    await pool.query('UPDATE password_reset_tokens SET used_at = $1 WHERE id = $2', [Date.now(), row.id]);
+
+    // A password reset should invalidate any existing sessions — a stolen refresh token
+    // shouldn't survive the very action meant to lock an attacker out.
+    await pool.query('DELETE FROM refresh_tokens WHERE user_id = $1', [row.user_id]);
   }
 
   static async generateInviteCode(userId: string): Promise<{ code: string; expiresAt: number }> {

@@ -26,6 +26,15 @@ CREATE TABLE refresh_tokens (
   created_at  BIGINT NOT NULL
 );
 
+CREATE TABLE password_reset_tokens (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  TEXT NOT NULL UNIQUE,
+  expires_at  BIGINT NOT NULL,
+  used_at     BIGINT,
+  created_at  BIGINT NOT NULL
+);
+
 CREATE TABLE partnerships (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id_1   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -81,3 +90,4 @@ CREATE TABLE ai_insights (
 
 CREATE UNIQUE INDEX idx_events_user_client ON events(user_id, client_id);
 CREATE INDEX idx_events_user_occurred     ON events(user_id, occurred_at);
+CREATE INDEX idx_password_reset_tokens_user ON password_reset_tokens(user_id);

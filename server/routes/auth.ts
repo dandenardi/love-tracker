@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { AuthService } from '../services/authService';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { forgotPasswordLimiter, resetPasswordLimiter } from '../middleware/rateLimit';
+import { renderResetPasswordPage } from '../views/resetPasswordPage';
 
 const router = Router();
 
@@ -43,6 +45,41 @@ router.post('/refresh', async (req, res) => {
   } catch (e: any) {
     res.status(401).json({ error: e.message });
   }
+});
+
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'email is required' });
+  }
+  try {
+    await AuthService.requestPasswordReset(email);
+  } catch (e: any) {
+    console.error('[Auth] forgot-password error:', e.message);
+  }
+  // Always the same response, whether or not the email exists or sending failed — avoids
+  // leaking which emails have an account.
+  res.json({ status: 'ok' });
+});
+
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'token and newPassword are required' });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    await AuthService.resetPassword(token, newPassword);
+    res.json({ status: 'ok' });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.get('/reset-password', resetPasswordLimiter, (req, res) => {
+  res.set('Content-Type', 'text/html').send(renderResetPasswordPage());
 });
 
 router.post('/invite', authenticateToken, async (req: AuthRequest, res) => {

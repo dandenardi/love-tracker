@@ -13,9 +13,11 @@ async function resetDatabase() {
     // We can use a query to drop all tables in the public schema
     console.log('🗑️ Dropping all existing tables...');
     await client.query(`
+      DROP TABLE IF EXISTS ai_insights CASCADE;
       DROP TABLE IF EXISTS pokes CASCADE;
       DROP TABLE IF EXISTS events CASCADE;
       DROP TABLE IF EXISTS partnerships CASCADE;
+      DROP TABLE IF EXISTS password_reset_tokens CASCADE;
       DROP TABLE IF EXISTS refresh_tokens CASCADE;
       DROP TABLE IF EXISTS users CASCADE;
     `);

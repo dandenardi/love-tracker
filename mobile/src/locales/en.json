@@ -281,6 +281,9 @@
     "login": "Login",
     "register": "Register",
     "createAccount": "Create Account",
-    "continueWithGoogle": "Continue with Google"
+    "continueWithGoogle": "Continue with Google",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordEmailRequired": "Enter your email above first",
+    "forgotPasswordSent": "If that email is registered, we've sent a password reset link. Check your inbox."
   }
 }

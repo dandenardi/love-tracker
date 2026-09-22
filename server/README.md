@@ -25,3 +25,20 @@ O comando `test:integration` já reseta o schema do banco de teste antes de roda
 `db:test:reset`), então não é preciso limpar nada manualmente entre execuções. As
 credenciais em `.env.test` são só para o Postgres local de teste — não têm nenhum segredo
 real, diferente de `.env` (que não é versionado).
+
+## E-mail (reset de senha)
+
+O envio de e-mail de "esqueci minha senha" usa [Resend](https://resend.com). Variáveis de
+ambiente necessárias em `.env` (veja `.env.example`):
+
+- `RESEND_API_KEY` — API key gerada no painel da Resend.
+- `EMAIL_FROM` — remetente (ex.: `Love Tracker <noreply@seudominio.com>`). Precisa ser um
+  domínio **verificado** na Resend (registros SPF/DKIM) — o domínio de teste padrão da
+  Resend só envia para o dono da conta, não serve para usuários reais em produção.
+- `PUBLIC_APP_URL` — URL pública do servidor, usada para montar o link de reset
+  (`{PUBLIC_APP_URL}/auth/reset-password?token=...`).
+
+Em testes (unitários e de integração), `services/emailService.ts` é mockado — nenhum e-mail
+real é enviado. O cliente Resend é instanciado de forma preguiçosa (só no primeiro envio),
+então a ausência de `RESEND_API_KEY` não quebra testes que nem chegam a exercitar esse
+caminho.

@@ -257,6 +257,27 @@ function PartnerSyncSection() {
             onChangeText={setPassword}
             secureTextEntry
           />
+          {!isRegistering && (
+            <TouchableOpacity
+              onPress={async () => {
+                if (!email.trim()) {
+                  Alert.alert('', t('auth.forgotPasswordEmailRequired'));
+                  return;
+                }
+                try {
+                  await sync.requestPasswordReset(email.trim());
+                } catch (err: any) {
+                  // Swallow — the store's generic message is enough, server never signals
+                  // whether the email exists anyway
+                } finally {
+                  Alert.alert('', t('auth.forgotPasswordSent'));
+                }
+              }}
+              style={{ alignSelf: 'flex-end', marginBottom: 12 }}
+            >
+              <Text style={{ color: c.primary, fontSize: 12 }}>{t('auth.forgotPassword')}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={handleAuth}
             disabled={sync.isSyncing}

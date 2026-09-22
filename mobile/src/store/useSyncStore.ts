@@ -62,6 +62,7 @@ interface SyncState {
   checkPlayServices: () => Promise<boolean>;
   register: (email: string, password: string, alias: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   googleLogin: () => Promise<void>;
   logout: () => Promise<void>;
   generateInvite: () => Promise<string>;
@@ -150,6 +151,17 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       ]);
       set({ userId: res.userId, alias: res.alias, isSyncing: false });
       await get().sync();
+    } catch (err: any) {
+      set({ error: err.message, isSyncing: false });
+      throw err;
+    }
+  },
+
+  requestPasswordReset: async (email) => {
+    set({ isSyncing: true, error: null });
+    try {
+      await authApi.forgotPassword(email);
+      set({ isSyncing: false });
     } catch (err: any) {
       set({ error: err.message, isSyncing: false });
       throw err;

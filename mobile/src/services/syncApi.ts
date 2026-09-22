@@ -14,6 +14,7 @@ import {
   InsightDomain,
   InsightResponse,
   EntitlementStatus,
+  ForgotPasswordPayload,
 } from '@/types/shared';
 
 import { storage } from './storage';
@@ -85,7 +86,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
 
     // Handle token expiration or missing token (401 or 403)
-    if ((response.status === 401 || response.status === 403) && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register' && path !== '/auth/google-login') {
+    if ((response.status === 401 || response.status === 403) && path !== '/auth/refresh' && path !== '/auth/login' && path !== '/auth/register' && path !== '/auth/google-login' && path !== '/auth/forgot-password') {
       const rfToken = await storage.getItem('refreshToken');
       if (rfToken) {
         console.log('[API] Token expired, attempting refresh...');
@@ -183,6 +184,11 @@ export const authApi = {
   updateLocale: (locale: string) => request<{ status: string }>('/auth/locale', {
     method: 'POST',
     body: JSON.stringify({ locale }),
+  }),
+
+  forgotPassword: (email: string) => request<{ status: string }>('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email } as ForgotPasswordPayload),
   }),
 };
 
