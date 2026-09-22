@@ -129,6 +129,32 @@ describe('AuthService.requestPasswordReset', () => {
   });
 });
 
+describe('AuthService.isPasswordResetTokenValid', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it('returns false for a nonexistent token', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+    expect(await AuthService.isPasswordResetTokenValid('bad-token')).toBe(false);
+  });
+
+  it('returns false for an already-used token', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ used_at: Date.now() - 1000, expires_at: Date.now() + 10000 }] });
+    expect(await AuthService.isPasswordResetTokenValid('used-token')).toBe(false);
+  });
+
+  it('returns false for an expired token', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ used_at: null, expires_at: Date.now() - 1000 }] });
+    expect(await AuthService.isPasswordResetTokenValid('expired-token')).toBe(false);
+  });
+
+  it('returns true for a valid, unused, unexpired token', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ used_at: null, expires_at: Date.now() + 10000 }] });
+    expect(await AuthService.isPasswordResetTokenValid('good-token')).toBe(true);
+  });
+});
+
 describe('AuthService.resetPassword', () => {
   beforeEach(() => {
     mockQuery.mockReset();

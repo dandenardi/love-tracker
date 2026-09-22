@@ -82,6 +82,15 @@ router.get('/reset-password', resetPasswordLimiter, (req, res) => {
   res.set('Content-Type', 'text/html').send(renderResetPasswordPage());
 });
 
+router.get('/reset-password/status', resetPasswordLimiter, async (req, res) => {
+  const { token } = req.query;
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ valid: false });
+  }
+  const valid = await AuthService.isPasswordResetTokenValid(token);
+  res.json({ valid });
+});
+
 router.post('/invite', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const response = await AuthService.generateInviteCode(req.user!.id);

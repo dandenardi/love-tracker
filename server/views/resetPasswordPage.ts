@@ -15,11 +15,15 @@ export function renderResetPasswordPage(): string {
   .msg { margin-top: 14px; font-size: 14px; }
   .msg.error { color: #ff8a9a; }
   .msg.success { color: #7de8a0; }
-  #form.hidden, .msg.hidden { display: none; }
+  #form.hidden, .msg.hidden, #openApp.hidden, #success.hidden { display: none; }
+  .open-app-link { display: block; text-align: center; font-size: 13px; color: #f5a9bc; text-decoration: none; margin-bottom: 20px; }
+  #success { text-align: center; }
+  #success a.button, button { width: 100%; box-sizing: border-box; padding: 12px; border: none; border-radius: 8px; background: #E94B77; color: #fff; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; }
 </style>
 </head>
 <body>
   <div class="card">
+    <a id="openApp" class="open-app-link hidden" href="lovetracker://">Already have the app? Open it here</a>
     <h1>Set a new password</h1>
     <form id="form">
       <input id="password" type="password" placeholder="New password" autocomplete="new-password" />
@@ -27,6 +31,10 @@ export function renderResetPasswordPage(): string {
       <button id="submit" type="submit">Reset Password</button>
       <div id="msg" class="msg hidden"></div>
     </form>
+    <div id="success" class="hidden">
+      <p class="msg success">Password changed! You can now log in in the app.</p>
+      <a class="button" href="lovetracker://">Open Love Tracker</a>
+    </div>
   </div>
   <script>
     var params = new URLSearchParams(window.location.search);
@@ -34,6 +42,8 @@ export function renderResetPasswordPage(): string {
     var form = document.getElementById('form');
     var msg = document.getElementById('msg');
     var submitBtn = document.getElementById('submit');
+    var successBox = document.getElementById('success');
+    var openAppLink = document.getElementById('openApp');
 
     function showMessage(text, isError) {
       msg.textContent = text;
@@ -43,6 +53,20 @@ export function renderResetPasswordPage(): string {
     if (!token) {
       showMessage('This reset link is missing its token. Please request a new one from the app.', true);
       form.classList.add('hidden');
+    } else {
+      openAppLink.classList.remove('hidden');
+      fetch('/auth/reset-password/status?token=' + encodeURIComponent(token))
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.valid) {
+            showMessage('This reset link has already been used or has expired. Please request a new one from the app.', true);
+            form.classList.add('hidden');
+          }
+        })
+        .catch(function () {
+          // If the check itself fails, let the user try submitting anyway — the real
+          // validation happens server-side on POST regardless.
+        });
     }
 
     form.addEventListener('submit', function (e) {
@@ -70,8 +94,9 @@ export function renderResetPasswordPage(): string {
         .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
         .then(function (result) {
           if (result.ok) {
-            showMessage('Password changed! You can now log in in the app.', false);
             form.classList.add('hidden');
+            openAppLink.classList.add('hidden');
+            successBox.classList.remove('hidden');
           } else {
             showMessage(result.data.error || 'Something went wrong.', true);
             submitBtn.disabled = false;

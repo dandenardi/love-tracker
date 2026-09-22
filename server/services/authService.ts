@@ -118,6 +118,13 @@ export class AuthService {
     await sendPasswordResetEmail(user.email, resetUrl);
   }
 
+  static async isPasswordResetTokenValid(rawToken: string): Promise<boolean> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const result = await pool.query('SELECT used_at, expires_at FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
+    const row = result.rows[0];
+    return !!row && !row.used_at && BigInt(row.expires_at) >= BigInt(Date.now());
+  }
+
   static async resetPassword(rawToken: string, newPassword: string): Promise<void> {
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
     const result = await pool.query('SELECT * FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);

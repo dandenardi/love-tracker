@@ -68,6 +68,21 @@ describe('password reset flow (real DB)', () => {
     expect(secondReset.status).toBe(400);
   });
 
+  it('reports token status as valid before use and invalid after use', async () => {
+    const user = await registerUser('Fiona');
+
+    await request(app).post('/auth/forgot-password').send({ email: user.email });
+    const token = extractToken();
+
+    const beforeStatus = await request(app).get(`/auth/reset-password/status?token=${token}`);
+    expect(beforeStatus.body).toEqual({ valid: true });
+
+    await request(app).post('/auth/reset-password').send({ token, newPassword: 'somepassword1' });
+
+    const afterStatus = await request(app).get(`/auth/reset-password/status?token=${token}`);
+    expect(afterStatus.body).toEqual({ valid: false });
+  });
+
   it('invalidates existing refresh tokens once the password is reset', async () => {
     const user = await registerUser('Erin');
 
